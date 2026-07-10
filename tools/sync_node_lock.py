@@ -36,6 +36,10 @@ def _build_lock(registry: dict[str, Any], node_repos: dict[str, Any]) -> dict[st
     default_tag_pattern = str(defaults.get("tag_pattern", "v{version}"))
     default_asset_pattern = str(defaults.get("asset_name_pattern", "{key}-v{version}.zip"))
     default_archive_pattern = str(defaults.get("archive_root_pattern", "{key}-{version}"))
+    default_repo_url_pattern = str(defaults.get("repo_url_pattern", "https://github.com/{repo_full}"))
+    default_releases_url_pattern = str(
+        defaults.get("releases_url_pattern", "https://github.com/{repo_full}/releases")
+    )
 
     mapping = node_repos.get("nodes", {})
     if not isinstance(mapping, dict):
@@ -65,10 +69,14 @@ def _build_lock(registry: dict[str, Any], node_repos: dict[str, Any]) -> dict[st
         tag_pattern = str(node_cfg.get("tag_pattern", default_tag_pattern))
         asset_pattern = str(node_cfg.get("asset_name_pattern", default_asset_pattern))
         archive_pattern = str(node_cfg.get("archive_root_pattern", default_archive_pattern))
+        repo_url_pattern = str(node_cfg.get("repo_url_pattern", default_repo_url_pattern))
+        releases_url_pattern = str(node_cfg.get("releases_url_pattern", default_releases_url_pattern))
 
         tag = _format_pattern(tag_pattern, key=key, version=version, repo=repo)
         asset_name = _format_pattern(asset_pattern, key=key, version=version, repo=repo)
         archive_root = _format_pattern(archive_pattern, key=key, version=version, repo=repo)
+        repo_url = _format_pattern(repo_url_pattern, key=key, version=version, repo=repo)
+        releases_url = _format_pattern(releases_url_pattern, key=key, version=version, repo=repo)
 
         out_nodes.append(
             {
@@ -81,6 +89,8 @@ def _build_lock(registry: dict[str, Any], node_repos: dict[str, Any]) -> dict[st
                         node_cfg.get("provider", node_repos.get("default_provider", "github-release"))
                     ),
                     "repo": repo,
+                    "repo_url": repo_url,
+                    "releases_url": releases_url,
                     "tag": tag,
                     "asset_name": asset_name,
                     "archive_root": archive_root,

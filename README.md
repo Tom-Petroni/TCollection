@@ -20,6 +20,17 @@ Use two levels of repositories:
 This keeps node development simple while giving artists a single package to
 install and update.
 
+## Active node links
+
+Current nodes shipped through the collection:
+
+- [TBlur](https://github.com/Tom-Petroni/TBlur)
+- [TColorRamp](https://github.com/Tom-Petroni/TColorRamp)
+- [TMask](https://github.com/Tom-Petroni/TMask)
+- [TNoise](https://github.com/Tom-Petroni/TNoise)
+
+The generated catalog lives in [docs/NODE_CATALOG_FR.md](docs/NODE_CATALOG_FR.md).
+
 ## Repository layout
 
 ```text
@@ -49,6 +60,7 @@ If you update `TNoise`:
 python tools/promote_node.py TNoise
 python tools/sync_node_lock.py
 python tools/sync_manifest.py
+python tools/sync_node_catalog.py
 python tools/validate_collection.py
 ```
 
@@ -100,3 +112,19 @@ The main remaining product work is now on top of that GitHub base:
 
 - automating node-to-collection promotion even further
 - implementing the in-Nuke download/apply update UX
+
+## GitHub operating model
+
+The GitHub side is now organized around one simple rule:
+
+- each node keeps its own repository, CI, and releases
+- `TCollection` only decides which released versions are exposed to artists
+
+That gives you a clean day-to-day workflow:
+
+1. update the node in its own repo
+2. publish the node release
+3. run `python tools/promote_node.py <NodeKey>` in `TCollection`
+4. review the generated metadata and catalog changes
+5. merge to `main`
+6. tag `TCollection` when you want a new artist-facing package

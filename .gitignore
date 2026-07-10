@@ -4,10 +4,10 @@ __pycache__/
 *.pyo
 *.pyd
 dist/
+dist_ci*/
 build/
 .pytest_cache/
 .mypy_cache/
 .DS_Store
 Thumbs.db
 *.zip
-

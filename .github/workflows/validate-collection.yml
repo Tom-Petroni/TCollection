@@ -24,6 +24,7 @@ jobs:
         run: |
           python tools/sync_node_lock.py
           python tools/sync_manifest.py
+          python tools/sync_node_catalog.py
 
       - name: Validate metadata
         run: python tools/validate_collection.py
@@ -42,4 +43,4 @@ jobs:
           ls dist_ci/TCollection-v*.zip >/dev/null
 
       - name: Ensure generated files are committed
-        run: git diff --exit-code -- config/node_lock.json tcollection/manifest.json
+        run: git diff --exit-code -- config/node_lock.json tcollection/manifest.json nodes/catalog.json docs/NODE_CATALOG_FR.md

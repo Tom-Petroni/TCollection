@@ -4,6 +4,10 @@
   "display_name": "TCollection",
   "version": "0.1.1",
   "status": "planning",
+  "links": {
+    "repo_url": "https://github.com/Tom-Petroni/TCollection",
+    "releases_url": "https://github.com/Tom-Petroni/TCollection/releases"
+  },
   "menu_name": "TCollection",
   "bootstrap_package": "tcollection",
   "channels": [

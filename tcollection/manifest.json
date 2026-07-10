@@ -3,7 +3,11 @@
     "key": "TCollection",
     "display_name": "TCollection",
     "version": "0.1.1",
-    "status": "planning"
+    "status": "planning",
+    "links": {
+      "repo_url": "https://github.com/Tom-Petroni/TCollection",
+      "releases_url": "https://github.com/Tom-Petroni/TCollection/releases"
+    }
   },
   "nodes": [
     {
@@ -44,7 +48,16 @@
       "class_name": "TBlur",
       "bootstrap_module": "TBlur.init",
       "python_path": "nodes/TBlur/publish",
-      "notes": "Source from TBlur2.0"
+      "notes": "Source from TBlur2.0",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TBlur",
+        "repo_url": "https://github.com/Tom-Petroni/TBlur",
+        "releases_url": "https://github.com/Tom-Petroni/TBlur/releases",
+        "tag": "v1.0.0",
+        "asset_name": "TBlur-v1.0.0.zip",
+        "archive_root": "TBlur-1.0.0"
+      }
     },
     {
       "key": "TColorRamp",
@@ -54,7 +67,16 @@
       "class_name": "TColorRamp",
       "bootstrap_module": "TColorRamp.init",
       "python_path": "nodes/TColorRamp/publish",
-      "notes": "Promoted to TSuite stable"
+      "notes": "Promoted to TSuite stable",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TColorRamp",
+        "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
+        "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
+        "tag": "v1.0.0",
+        "asset_name": "TColorRamp-v1.0.0.zip",
+        "archive_root": "TColorRamp-1.0.0"
+      }
     },
     {
       "key": "TMask",
@@ -64,7 +86,16 @@
       "class_name": "TMask",
       "bootstrap_module": "TMask.init",
       "python_path": "nodes/TMask/publish",
-      "notes": ""
+      "notes": "",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TMask",
+        "repo_url": "https://github.com/Tom-Petroni/TMask",
+        "releases_url": "https://github.com/Tom-Petroni/TMask/releases",
+        "tag": "v0.1.0",
+        "asset_name": "TMask-v0.1.0.zip",
+        "archive_root": "TMask-0.1.0"
+      }
     },
     {
       "key": "TNoise",
@@ -74,7 +105,16 @@
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",
       "python_path": "nodes/TNoise/publish",
-      "notes": "Legacy CUDA variant retained separately as TNoiseCuda"
+      "notes": "Legacy CUDA variant retained separately as TNoiseCuda",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TNoise",
+        "repo_url": "https://github.com/Tom-Petroni/TNoise",
+        "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
+        "tag": "v2.0.0",
+        "asset_name": "TNoise-v2.0.0.zip",
+        "archive_root": "TNoise-2.0.0"
+      }
     },
     {
       "key": "TNormalRelight",

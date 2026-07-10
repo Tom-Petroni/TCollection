@@ -6,7 +6,9 @@
   "defaults": {
     "tag_pattern": "v{version}",
     "asset_name_pattern": "{key}-v{version}.zip",
-    "archive_root_pattern": "{key}-{version}"
+    "archive_root_pattern": "{key}-{version}",
+    "repo_url_pattern": "https://github.com/{repo_full}",
+    "releases_url_pattern": "https://github.com/{repo_full}/releases"
   },
   "nodes": {
     "TBlur": {
@@ -51,4 +53,3 @@
     }
   }
 }
-

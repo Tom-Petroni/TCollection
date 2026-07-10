@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from _collection_utils import REGISTRY_PATH, read_json, resolve_repo_path, write_json
+from sync_node_catalog import main as sync_node_catalog_main
 from sync_manifest import main as sync_manifest_main
 from sync_node_lock import main as sync_node_lock_main
 from validate_collection import main as validate_collection_main
@@ -81,6 +82,7 @@ def main() -> None:
 
     sync_node_lock_main([])
     sync_manifest_main()
+    sync_node_catalog_main()
     validate_collection_main()
     print(f"Promoted {node_key} from {repo_path}")
 

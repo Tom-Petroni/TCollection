@@ -10,6 +10,8 @@
       "source": {
         "provider": "github-release",
         "repo": "Tom-Petroni/TBlur",
+        "repo_url": "https://github.com/Tom-Petroni/TBlur",
+        "releases_url": "https://github.com/Tom-Petroni/TBlur/releases",
         "tag": "v1.0.0",
         "asset_name": "TBlur-v1.0.0.zip",
         "archive_root": "TBlur-1.0.0"
@@ -23,6 +25,8 @@
       "source": {
         "provider": "github-release",
         "repo": "Tom-Petroni/TColorRamp",
+        "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
+        "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
         "tag": "v1.0.0",
         "asset_name": "TColorRamp-v1.0.0.zip",
         "archive_root": "TColorRamp-1.0.0"
@@ -36,6 +40,8 @@
       "source": {
         "provider": "github-release",
         "repo": "Tom-Petroni/TMask",
+        "repo_url": "https://github.com/Tom-Petroni/TMask",
+        "releases_url": "https://github.com/Tom-Petroni/TMask/releases",
         "tag": "v0.1.0",
         "asset_name": "TMask-v0.1.0.zip",
         "archive_root": "TMask-0.1.0"
@@ -49,6 +55,8 @@
       "source": {
         "provider": "github-release",
         "repo": "Tom-Petroni/TNoise",
+        "repo_url": "https://github.com/Tom-Petroni/TNoise",
+        "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
         "tag": "v2.0.0",
         "asset_name": "TNoise-v2.0.0.zip",
         "archive_root": "TNoise-2.0.0"
