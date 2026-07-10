@@ -10,6 +10,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +27,19 @@ jobs:
 
       - name: Validate metadata
         run: python tools/validate_collection.py
+
+      - name: Python syntax check
+        run: python -m compileall tcollection tools init.py menu.py
+
+      - name: Assemble stable collection from GitHub node releases
+        run: python tools/assemble_collection.py --source github-release --statuses stable --output dist_ci
+
+      - name: Verify release-oriented outputs exist
+        shell: bash
+        run: |
+          test -f dist_ci/latest.json
+          test -f dist_ci/SHA256SUMS.txt
+          ls dist_ci/TCollection-v*.zip >/dev/null
 
       - name: Ensure generated files are committed
         run: git diff --exit-code -- config/node_lock.json tcollection/manifest.json

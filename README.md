@@ -68,6 +68,12 @@ To assemble from published GitHub node releases instead of sibling local repos:
 python tools/assemble_collection.py --source github-release --statuses stable
 ```
 
+This writes:
+
+- `TCollection-vX.Y.Z.zip`
+- `latest.json`
+- `SHA256SUMS.txt`
+
 ## Artist flow target
 
 At startup, TCollection should:
@@ -90,4 +96,7 @@ It now also includes:
 - a GitHub-release collection assembler for CI publishing
 - a GitHub release update check path for the future in-Nuke updater
 
-Remote release downloading and full GitHub release assembly will be added next.
+The main remaining product work is now on top of that GitHub base:
+
+- automating node-to-collection promotion even further
+- implementing the in-Nuke download/apply update UX

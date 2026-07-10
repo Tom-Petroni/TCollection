@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import tempfile
@@ -163,18 +164,39 @@ def _write_packaged_manifest(stage_dir: Path, included_nodes: list[dict[str, Any
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
-def _write_update_manifest(output_dir: Path, package_name: str, version: str) -> Path:
+def _write_update_manifest(
+    output_dir: Path,
+    package_name: str,
+    version: str,
+    download_url: str,
+    notes_url: str,
+) -> Path:
     collection = read_json(COLLECTION_CONFIG_PATH)
     manifest = {
         "key": collection.get("key", "TCollection"),
         "channel": str(collection.get("updates", {}).get("channel", "stable")),
         "version": version,
-        "download_url": f"./{package_name}",
-        "notes_url": "",
+        "download_url": download_url or f"./{package_name}",
+        "notes_url": notes_url,
     }
     manifest_path = output_dir / "latest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest_path
+
+
+def _sha256_for(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_sha256sums(output_dir: Path, paths: list[Path]) -> Path:
+    lines = [f"{_sha256_for(path)}  {path.name}" for path in paths]
+    checksum_path = output_dir / "SHA256SUMS.txt"
+    checksum_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return checksum_path
 
 
 def _zip_dir(source_dir: Path, zip_path: Path) -> None:
@@ -196,6 +218,8 @@ def main() -> None:
     parser.add_argument("--statuses", default="stable", help="Comma-separated node statuses to include.")
     parser.add_argument("--output", default="dist", help="Output directory relative to the repo root.")
     parser.add_argument("--package-version", default="", help="Optional package version override.")
+    parser.add_argument("--download-url", default="", help="Explicit absolute download URL for latest.json.")
+    parser.add_argument("--notes-url", default="", help="Explicit release notes URL for latest.json.")
     args = parser.parse_args()
 
     statuses = _selected_statuses(args.statuses)
@@ -250,11 +274,19 @@ def main() -> None:
     if zip_path.exists():
         zip_path.unlink()
     _zip_dir(stage_dir, zip_path)
-    manifest_path = _write_update_manifest(output_dir, zip_path.name, version)
+    manifest_path = _write_update_manifest(
+        output_dir,
+        zip_path.name,
+        version,
+        args.download_url.strip(),
+        args.notes_url.strip(),
+    )
+    checksum_path = _write_sha256sums(output_dir, [zip_path, manifest_path])
 
     print(f"Staged collection directory: {stage_dir}")
     print(f"Created collection archive: {zip_path}")
     print(f"Created update manifest: {manifest_path}")
+    print(f"Created checksums: {checksum_path}")
     print(
         "Included nodes: "
         + (

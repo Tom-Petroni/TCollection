@@ -18,9 +18,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: publish-tcollection-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +39,7 @@ jobs:
         id: version
         shell: bash
         run: |
+          STATUSES_INPUT="${{ github.event.inputs.statuses }}"
           VERSION_INPUT="${{ github.event.inputs.package_version }}"
           if [ -n "$VERSION_INPUT" ]; then
             VERSION="$VERSION_INPUT"
@@ -42,14 +48,27 @@ jobs:
           else
             VERSION="$(tr -d '\r\n' < VERSION)"
           fi
+          if [ -n "$STATUSES_INPUT" ]; then
+            STATUSES="$STATUSES_INPUT"
+          else
+            STATUSES="stable"
+          fi
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
+          RELEASE_URL="${REPO_URL}/releases/tag/v${VERSION}"
+          DOWNLOAD_URL="${REPO_URL}/releases/download/v${VERSION}/TCollection-v${VERSION}.zip"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "statuses=$STATUSES" >> "$GITHUB_OUTPUT"
+          echo "release_url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
+          echo "download_url=$DOWNLOAD_URL" >> "$GITHUB_OUTPUT"
 
       - name: Assemble TCollection from node releases
         run: |
           python tools/assemble_collection.py \
             --source github-release \
-            --statuses "${{ github.event.inputs.statuses || 'stable' }}" \
-            --package-version "${{ steps.version.outputs.version }}"
+            --statuses "${{ steps.version.outputs.statuses }}" \
+            --package-version "${{ steps.version.outputs.version }}" \
+            --download-url "${{ steps.version.outputs.download_url }}" \
+            --notes-url "${{ steps.version.outputs.release_url }}"
 
       - name: Upload assembled artifacts
         uses: actions/upload-artifact@v4
@@ -65,4 +84,5 @@ jobs:
           files: |
             dist/TCollection-v${{ steps.version.outputs.version }}.zip
             dist/latest.json
+            dist/SHA256SUMS.txt
           generate_release_notes: true
