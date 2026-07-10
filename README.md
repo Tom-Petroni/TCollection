@@ -32,6 +32,90 @@ Current nodes shipped through the collection:
 The generated catalog lives in [docs/NODE_CATALOG_FR.md](docs/NODE_CATALOG_FR.md).
 The node repository naming convention lives in [docs/NODE_REPO_STANDARD_FR.md](docs/NODE_REPO_STANDARD_FR.md).
 
+## Install In Nuke
+
+Current artist install target: one folder to extract, plus one line to add in
+`.nuke/init.py`.
+
+### 1. Find your `.nuke` folder
+
+- Windows: `C:\Users\<YourUser>\.nuke`
+- macOS: `/Users/<your-user>/.nuke`
+- Linux: `/home/<your-user>/.nuke`
+
+### 2. Download the latest TCollection release
+
+Go to the GitHub releases page and download the latest
+`TCollection-vX.Y.Z.zip` archive:
+
+- [TCollection Releases](https://github.com/Tom-Petroni/TCollection/releases)
+
+### 3. Extract it into `.nuke/TCollection`
+
+Create this folder if it does not exist:
+
+```text
+.nuke/TCollection
+```
+
+Extract the ZIP contents directly inside that folder.
+
+After extraction, this is what you should see inside `.nuke/TCollection`:
+
+```text
+TCollection/
+  init.py
+  menu.py
+  tcollection_bootstrap.py
+  VERSION
+  config/
+  docs/
+  gizmos/
+  nodes/
+  scripts/
+  tcollection/
+```
+
+### 4. Add TCollection to Nuke's plugin path
+
+Open `.nuke/init.py`.
+
+If the file does not exist yet, create it.
+
+Add this line:
+
+```python
+import nuke
+nuke.pluginAddPath("./TCollection")
+```
+
+If you already have an `init.py`, just append the line. Do not remove your
+existing setup.
+
+### 5. Launch Nuke
+
+If the install is correct, you should see:
+
+- a `Nodes > TCollection` menu
+- the nodes `TBlur`, `TColorRamp`, `TMask`, and `TNoise`
+
+### 6. Check that the managed install is working
+
+In Nuke, open:
+
+- `Nodes > TCollection > Show Install Status`
+
+You can also test:
+
+- `Nodes > TCollection > Check For Updates...`
+- `Nodes > TCollection > Prepare Update For Next Launch...`
+
+### Notes
+
+- First install still requires one manual edit in `.nuke/init.py`
+- Later updates are designed to download into `.nuke/TCollection/versions`
+- The next launched version becomes active after restarting Nuke
+
 ## Repository layout
 
 ```text
