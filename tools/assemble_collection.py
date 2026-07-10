@@ -25,6 +25,7 @@ from _collection_utils import (
 PACKAGE_ROOT_FILES = [
     "init.py",
     "menu.py",
+    "tcollection_bootstrap.py",
     "VERSION",
 ]
 

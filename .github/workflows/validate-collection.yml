@@ -30,7 +30,7 @@ jobs:
         run: python tools/validate_collection.py
 
       - name: Python syntax check
-        run: python -m compileall tcollection tools init.py menu.py
+        run: python -m compileall tcollection tools init.py menu.py tcollection_bootstrap.py
 
       - name: Assemble stable collection from GitHub node releases
         run: python tools/assemble_collection.py --source github-release --statuses stable --output dist_ci

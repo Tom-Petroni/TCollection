@@ -98,7 +98,11 @@ At startup, TCollection should:
 - notify artists when a newer collection version is available
 - download the update for the next launch instead of replacing loaded binaries
 
-The updater foundations are already scaffolded in `tcollection/updater.py`.
+The runtime now also supports a managed install flow:
+
+- a stable bootstrap entrypoint stays in the artist plugin path
+- downloaded versions are stored in `.nuke/TCollection/versions`
+- a prepared update becomes active on the next Nuke launch
 
 ## Current status
 
@@ -113,7 +117,7 @@ It now also includes:
 The main remaining product work is now on top of that GitHub base:
 
 - automating node-to-collection promotion even further
-- implementing the in-Nuke download/apply update UX
+- polishing the in-Nuke update UX and installation onboarding
 
 ## GitHub operating model
 

@@ -1,8 +1,12 @@
-"""Update manifest helpers for TCollection."""
+"""Update helpers for TCollection managed installs."""
 
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -16,6 +20,7 @@ except Exception:  # pragma: no cover - available only in Nuke runtime
 ROOT_DIR = Path(__file__).resolve().parents[1]
 COLLECTION_CONFIG_PATH = ROOT_DIR / "config" / "collection.json"
 VERSION_PATH = ROOT_DIR / "VERSION"
+MANAGED_ROOT_ENV = "TCOLLECTION_MANAGED_ROOT"
 
 
 def _load_collection_config() -> dict[str, Any]:
@@ -96,6 +101,139 @@ def _resolve_github_release_result(
     }
 
 
+def _expand_user_relative_path(raw_path: str) -> Path:
+    candidate = Path(raw_path).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+
+    home_dir = Path.home()
+    normalized = raw_path.replace("\\", "/").lstrip("./")
+    return (home_dir / normalized).resolve()
+
+
+def _managed_root() -> Path:
+    override = str(os.environ.get(MANAGED_ROOT_ENV, "")).strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    config = _load_collection_config()
+    updates = dict(config.get("updates", {}))
+    download_root_raw = str(updates.get("download_root", ".nuke/TCollection/versions")).strip()
+    versions_root = _expand_user_relative_path(download_root_raw)
+    return versions_root.parent if versions_root.name == "versions" else versions_root
+
+
+def _versions_root() -> Path:
+    override = str(os.environ.get(MANAGED_ROOT_ENV, "")).strip()
+    if override:
+        return Path(override).expanduser().resolve() / "versions"
+
+    config = _load_collection_config()
+    updates = dict(config.get("updates", {}))
+    download_root_raw = str(updates.get("download_root", ".nuke/TCollection/versions")).strip()
+    return _expand_user_relative_path(download_root_raw)
+
+
+def _state_path(name: str) -> Path:
+    return _managed_root() / name
+
+
+def _read_json_if_exists(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _candidate_entry_root(base_dir: Path) -> Path | None:
+    if (base_dir / "tcollection" / "manifest.json").is_file():
+        return base_dir
+
+    children = [path for path in base_dir.iterdir() if path.is_dir()]
+    for child in sorted(children):
+        if (child / "tcollection" / "manifest.json").is_file():
+            return child
+    return None
+
+
+def _entry_root_from_state(managed_root: Path, state: dict[str, Any]) -> Path | None:
+    entry_root_raw = str(state.get("entry_root", "")).strip()
+    if entry_root_raw:
+        return _candidate_entry_root((managed_root / entry_root_raw).resolve())
+
+    version = str(state.get("version", "")).strip()
+    if not version:
+        return None
+    return _candidate_entry_root((_versions_root() / version).resolve())
+
+
+def get_install_state() -> dict[str, str]:
+    managed_root = _managed_root()
+    versions_root = _versions_root()
+    current = _read_json_if_exists(_state_path("current.json"))
+    pending = _read_json_if_exists(_state_path("pending.json"))
+    current_entry = _entry_root_from_state(managed_root, current)
+    pending_entry = _entry_root_from_state(managed_root, pending)
+    return {
+        "managed_root": str(managed_root),
+        "versions_root": str(versions_root),
+        "runtime_root": str(ROOT_DIR),
+        "current_version": str(current.get("version", "")).strip(),
+        "current_entry_root": str(current_entry) if current_entry else "",
+        "pending_version": str(pending.get("version", "")).strip(),
+        "pending_entry_root": str(pending_entry) if pending_entry else "",
+    }
+
+
+def describe_install_state() -> str:
+    state = get_install_state()
+    return (
+        "TCollection install status\n\n"
+        f"Runtime root: {state['runtime_root']}\n"
+        f"Managed root: {state['managed_root']}\n"
+        f"Versions root: {state['versions_root']}\n"
+        f"Current managed version: {state['current_version'] or '(none)'}\n"
+        f"Pending version: {state['pending_version'] or '(none)'}\n"
+    )
+
+
+def _download_file(url: str, destination: Path) -> None:
+    request = Request(url, headers={"User-Agent": "TCollection-Updater"})
+    with urlopen(request, timeout=30) as response:
+        destination.write_bytes(response.read())
+
+
+def _validate_extracted_package(root_dir: Path, version: str) -> Path:
+    entry_root = _candidate_entry_root(root_dir)
+    if entry_root is None:
+        raise RuntimeError(f"Unable to find a TCollection package root in the downloaded archive for {version}.")
+    return entry_root
+
+
+def _stage_version_archive(archive_path: Path, version: str) -> Path:
+    with tempfile.TemporaryDirectory(prefix="tcollection_install_") as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        extract_root = temp_dir / "extract"
+        extract_root.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive_path) as archive:
+            archive.extractall(extract_root)
+
+        entry_root = _validate_extracted_package(extract_root, version)
+        final_version_root = _versions_root() / version
+        final_version_root.parent.mkdir(parents=True, exist_ok=True)
+        if final_version_root.exists():
+            shutil.rmtree(final_version_root)
+        shutil.move(str(entry_root), str(final_version_root))
+        return final_version_root
+
+
 def check_for_updates() -> dict[str, Any]:
     config = _load_collection_config()
     updates = dict(config.get("updates", {}))
@@ -157,6 +295,48 @@ def check_for_updates() -> dict[str, Any]:
     }
 
 
+def prepare_update_for_next_launch(update_result: dict[str, Any] | None = None) -> dict[str, Any]:
+    result = dict(update_result or check_for_updates())
+    latest_version = str(result.get("latest_version", "")).strip()
+    download_url = str(result.get("download_url", "")).strip()
+    if not latest_version or not download_url:
+        raise RuntimeError("Update metadata is incomplete. Missing latest_version or download_url.")
+
+    managed_root = _managed_root()
+    versions_root = _versions_root()
+    managed_root.mkdir(parents=True, exist_ok=True)
+    versions_root.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="tcollection_download_") as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        archive_path = temp_dir / f"TCollection-v{latest_version}.zip"
+        _download_file(download_url, archive_path)
+        final_version_root = _stage_version_archive(archive_path, latest_version)
+
+    payload = {
+        "version": latest_version,
+        "entry_root": str(final_version_root.relative_to(managed_root)).replace("\\", "/"),
+        "download_url": download_url,
+        "notes_url": str(result.get("notes_url", "")).strip(),
+    }
+
+    config = _load_collection_config()
+    activate_on_next_launch = bool(dict(config.get("updates", {})).get("activate_on_next_launch", True))
+    if activate_on_next_launch:
+        _write_json(_state_path("pending.json"), payload)
+    else:
+        _write_json(_state_path("current.json"), payload)
+
+    return {
+        "prepared": True,
+        "version": latest_version,
+        "managed_root": str(managed_root),
+        "version_root": str(final_version_root),
+        "restart_required": activate_on_next_launch,
+        "notes_url": payload["notes_url"],
+    }
+
+
 def notify_startup_update(background: bool = True) -> None:
     config = _load_collection_config()
     updates = dict(config.get("updates", {}))
@@ -173,7 +353,20 @@ def notify_startup_update(background: bool = True) -> None:
     )
     if nuke is not None:
         nuke.tprint(message)
-        if not background:
+        startup_prompt = bool(updates.get("startup_prompt", False))
+        if startup_prompt and hasattr(nuke, "ask") and nuke.ask(  # ty: ignore[unresolved-attribute]
+            "TCollection update available.\n\n"
+            f"Current: {result['current_version']}\n"
+            f"Latest: {result['latest_version']}\n\n"
+            "Download now and activate on next launch?"
+        ):
+            prepared = prepare_update_for_next_launch(result)
+            nuke.message(  # ty: ignore[unresolved-attribute]
+                "TCollection update prepared.\n\n"
+                f"Version: {prepared['version']}\n"
+                "Restart Nuke to activate it."
+            )
+        elif not background:
             nuke.message(message)  # ty: ignore[unresolved-attribute]
     else:
         print(message)

@@ -2,9 +2,11 @@
 
 import logging
 
+from tcollection_bootstrap import load_runtime_callable
+
 try:
-    from tcollection.loader import bootstrap_status
-    from tcollection.updater import notify_startup_update
+    bootstrap_status, _RUNTIME_ROOT = load_runtime_callable("tcollection.loader", "bootstrap_status")
+    notify_startup_update, _ = load_runtime_callable("tcollection.updater", "notify_startup_update")
 except Exception:
     bootstrap_status = None  # type: ignore[assignment]
     notify_startup_update = None  # type: ignore[assignment]
@@ -22,4 +24,3 @@ if callable(notify_startup_update):
         notify_startup_update(background=True)
     except Exception:
         logger.exception("TCollection failed to check for startup updates.")
-

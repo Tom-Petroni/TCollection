@@ -2,8 +2,10 @@
 
 import logging
 
+from tcollection_bootstrap import load_runtime_callable
+
 try:
-    from tcollection.menu import register_menu
+    register_menu, _RUNTIME_ROOT = load_runtime_callable("tcollection.menu", "register_menu")
 except Exception:
     register_menu = None  # type: ignore[assignment]
 
@@ -14,4 +16,3 @@ if callable(register_menu):
         register_menu()
     except Exception:
         logger.exception("TCollection failed to register its menu.")
-
