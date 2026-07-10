@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "workspace_root": "..",
+  "default_repo_path_pattern": "{key}",
+  "nodes": {
+    "TBlur": {
+      "repo_path": "..\\TBlur"
+    },
+    "TColorRamp": {
+      "repo_path": "..\\TColorRamp"
+    },
+    "TMask": {
+      "repo_path": "..\\TMask"
+    },
+    "TNoise": {
+      "repo_path": "..\\TNoise"
+    },
+    "TNormalRelight": {
+      "repo_path": "..\\TSuite-node-TNormalRelight"
+    },
+    "TSMAA": {
+      "repo_path": "..\\TSuite-node-TSMAA"
+    },
+    "TScatter": {
+      "repo_path": "..\\TSuite-node-TScatter"
+    },
+    "BrushScatter": {
+      "repo_path": "..\\TSuite-node-BrushScatter"
+    },
+    "PRefToMotion": {
+      "repo_path": "..\\TSuite-node-PRefToMotion"
+    },
+    "OnlyRender": {
+      "repo_path": "..\\TSuite-node-OnlyRender"
+    }
+  }
+}

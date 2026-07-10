@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-07-10",
+  "nodes": [
+    {
+      "key": "BrushScatter",
+      "label": "BrushScatter",
+      "version": "0.1.0",
+      "status": "test",
+      "class_name": "BrushScatter",
+      "bootstrap_module": "brushscatter_plugin.init",
+      "python_path": "nodes/BrushScatter/publish",
+      "notes": "Still in validation."
+    },
+    {
+      "key": "OnlyRender",
+      "label": "OnlyRender",
+      "version": "1.0.0",
+      "status": "hold",
+      "class_name": "",
+      "bootstrap_module": "menu",
+      "python_path": "nodes/OnlyRender/publish",
+      "notes": "Collection-level toolset without node creation."
+    },
+    {
+      "key": "PRefToMotion",
+      "label": "PRefToMotion",
+      "version": "0.1.0",
+      "status": "hold",
+      "class_name": "PRefToMotion",
+      "bootstrap_module": "pref_to_motion_plugin.init",
+      "python_path": "nodes/PRefToMotion/publish",
+      "notes": "Kept out of the default collection menu."
+    },
+    {
+      "key": "TBlur",
+      "label": "TBlur",
+      "version": "1.0.0",
+      "status": "stable",
+      "class_name": "TBlur",
+      "bootstrap_module": "TBlur.init",
+      "python_path": "nodes/TBlur/publish",
+      "notes": "Source from TBlur2.0"
+    },
+    {
+      "key": "TColorRamp",
+      "label": "TColorRamp",
+      "version": "1.0.0",
+      "status": "stable",
+      "class_name": "TColorRamp",
+      "bootstrap_module": "TColorRamp.init",
+      "python_path": "nodes/TColorRamp/publish",
+      "notes": "Promoted to TSuite stable"
+    },
+    {
+      "key": "TMask",
+      "label": "TMask",
+      "version": "0.1.0",
+      "status": "stable",
+      "class_name": "TMask",
+      "bootstrap_module": "TMask.init",
+      "python_path": "nodes/TMask/publish",
+      "notes": ""
+    },
+    {
+      "key": "TNoise",
+      "label": "TNoise",
+      "version": "2.0.0",
+      "status": "stable",
+      "class_name": "TNoise",
+      "bootstrap_module": "TNoise.init",
+      "python_path": "nodes/TNoise/publish",
+      "notes": "Legacy CUDA variant retained separately as TNoiseCuda"
+    },
+    {
+      "key": "TNormalRelight",
+      "label": "TNormalRelight",
+      "version": "0.1.0",
+      "status": "stable",
+      "class_name": "TNormalRelight",
+      "bootstrap_module": "TNormalRelight.init",
+      "python_path": "nodes/TNormalRelight/publish",
+      "notes": "Prepared for later activation in the collection lock."
+    },
+    {
+      "key": "TSMAA",
+      "label": "TSMAA",
+      "version": "0.1.0",
+      "status": "test",
+      "class_name": "TSMAA",
+      "bootstrap_module": "TSMAA.init",
+      "python_path": "nodes/TSMAA/publish",
+      "notes": "Still in validation."
+    },
+    {
+      "key": "TScatter",
+      "label": "TScatter",
+      "version": "0.1.0",
+      "status": "test",
+      "class_name": "TScatter",
+      "bootstrap_module": "tscatter_plugin.init",
+      "python_path": "nodes/TScatter/publish",
+      "notes": "Still in validation."
+    }
+  ]
+}

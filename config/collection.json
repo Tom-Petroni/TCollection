@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "key": "TCollection",
+  "display_name": "TCollection",
+  "version": "0.1.0",
+  "status": "planning",
+  "menu_name": "TCollection",
+  "bootstrap_package": "tcollection",
+  "channels": [
+    "stable"
+  ],
+  "runtime": {
+    "auto_bootstrap_statuses": [
+      "stable"
+    ],
+    "nodes_root": "nodes",
+    "gizmos_root": "gizmos",
+    "scripts_root": "scripts"
+  },
+  "updates": {
+    "enabled": true,
+    "startup_check": true,
+    "channel": "stable",
+    "provider": "github-release",
+    "repo": "Tom-Petroni/TCollection",
+    "asset_name_pattern": "TCollection-v{version}.zip",
+    "manifest_url": "",
+    "download_root": ".nuke/TCollection/versions",
+    "activate_on_next_launch": true
+  }
+}

@@ -1,0 +1,93 @@
+# TCollection
+
+TCollection is the central Nuke collection product for Tom Petroni tools.
+
+It is not the main place where native nodes are authored. Each node can keep its
+own repository, CI, and release cadence. TCollection is the product layer that:
+
+- presents a single menu and installation entry point to artists
+- pins exact node versions through a collection lockfile
+- assembles a coherent suite from independent node releases
+- prepares future in-app update notifications for artists
+
+## Core idea
+
+Use two levels of repositories:
+
+- node repositories such as `TNoise`, `TBlur`, `TMask`
+- one central collection repository: `TCollection`
+
+This keeps node development simple while giving artists a single package to
+install and update.
+
+## Repository layout
+
+```text
+TCollection/
+  .github/workflows/    # collection validation and future packaging workflows
+  config/               # collection settings + node repo mapping + lockfile
+  docs/                 # architecture and updater strategy
+  gizmos/               # collection-level gizmos
+  nodes/                # registry only in source repo, payloads in packaged builds
+  scripts/              # collection-level Python tools for artists
+  tcollection/          # runtime loader, menu, updater, manifest
+  tools/                # sync and validation helpers
+  init.py               # Nuke entrypoint
+  menu.py               # Nuke menu entrypoint
+  VERSION               # collection version
+```
+
+## Development flow
+
+If you update `TNoise`:
+
+1. work in the `TNoise` repo
+2. release `TNoise vX.Y.Z`
+3. promote the node into TCollection:
+
+```powershell
+python tools/promote_node.py TNoise
+python tools/sync_node_lock.py
+python tools/sync_manifest.py
+python tools/validate_collection.py
+```
+
+4. optionally assemble a local collection package:
+
+```powershell
+python tools/assemble_collection.py --statuses stable
+```
+
+5. commit the collection bump
+
+Later we can automate the promote step with a pull request opened from the node repo.
+
+To assemble from published GitHub node releases instead of sibling local repos:
+
+```powershell
+python tools/assemble_collection.py --source github-release --statuses stable
+```
+
+## Artist flow target
+
+At startup, TCollection should:
+
+- bootstrap stable nodes
+- register one `Nodes > TCollection` menu
+- optionally check a remote update manifest
+- notify artists when a newer collection version is available
+- download the update for the next launch instead of replacing loaded binaries
+
+The updater foundations are already scaffolded in `tcollection/updater.py`.
+
+## Current status
+
+This initial scaffold defines the collection contract and runtime foundation.
+It now also includes:
+
+- a node promotion helper from local sibling repos
+- a local collection assembler for dev and QA packaging
+- a GitHub-release collection assembler for CI publishing
+- a GitHub release update check path for the future in-Nuke updater
+
+Remote release downloading and full GitHub release assembly will be added next.

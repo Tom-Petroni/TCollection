@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-10T10:25:26.965545Z",
+  "registry_updated_at": "2026-07-10",
+  "nodes": [
+    {
+      "key": "TBlur",
+      "version": "1.0.0",
+      "status": "stable",
+      "label": "TBlur",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TBlur",
+        "tag": "v1.0.0",
+        "asset_name": "TBlur-v1.0.0.zip",
+        "archive_root": "TBlur-1.0.0"
+      }
+    },
+    {
+      "key": "TColorRamp",
+      "version": "1.0.0",
+      "status": "stable",
+      "label": "TColorRamp",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TColorRamp",
+        "tag": "v1.0.0",
+        "asset_name": "TColorRamp-v1.0.0.zip",
+        "archive_root": "TColorRamp-1.0.0"
+      }
+    },
+    {
+      "key": "TMask",
+      "version": "0.1.0",
+      "status": "stable",
+      "label": "TMask",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TMask",
+        "tag": "v0.1.0",
+        "asset_name": "TMask-v0.1.0.zip",
+        "archive_root": "TMask-0.1.0"
+      }
+    },
+    {
+      "key": "TNoise",
+      "version": "2.0.0",
+      "status": "stable",
+      "label": "TNoise",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TNoise",
+        "tag": "v2.0.0",
+        "asset_name": "TNoise-v2.0.0.zip",
+        "archive_root": "TNoise-2.0.0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "owner": "Tom-Petroni",
+  "repo_name_pattern": "{key}",
+  "default_provider": "github-release",
+  "defaults": {
+    "tag_pattern": "v{version}",
+    "asset_name_pattern": "{key}-v{version}.zip",
+    "archive_root_pattern": "{key}-{version}"
+  },
+  "nodes": {
+    "TBlur": {
+      "enabled": true,
+      "repo": "Tom-Petroni/TBlur"
+    },
+    "TColorRamp": {
+      "enabled": true,
+      "repo": "Tom-Petroni/TColorRamp"
+    },
+    "TMask": {
+      "enabled": true,
+      "repo": "Tom-Petroni/TMask"
+    },
+    "TNoise": {
+      "enabled": true,
+      "repo": "Tom-Petroni/TNoise"
+    },
+    "TNormalRelight": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-TNormalRelight"
+    },
+    "TSMAA": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-TSMAA"
+    },
+    "TScatter": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-TScatter"
+    },
+    "BrushScatter": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-BrushScatter"
+    },
+    "PRefToMotion": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-PRefToMotion"
+    },
+    "OnlyRender": {
+      "enabled": false,
+      "repo": "Tom-Petroni/TSuite-node-OnlyRender"
+    }
+  }
+}
+
