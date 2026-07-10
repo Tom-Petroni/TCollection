@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
@@ -100,7 +100,7 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "status": "stable",
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",
@@ -111,9 +111,9 @@
         "repo": "Tom-Petroni/TNoise",
         "repo_url": "https://github.com/Tom-Petroni/TNoise",
         "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
-        "tag": "v2.0.0",
-        "asset_name": "TNoise-v2.0.0.zip",
-        "archive_root": "TNoise-2.0.0"
+        "tag": "v2.0.1",
+        "asset_name": "TNoise-v2.0.1.zip",
+        "archive_root": "TNoise-2.0.1"
       }
     },
     {

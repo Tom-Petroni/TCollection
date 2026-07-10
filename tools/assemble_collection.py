@@ -42,6 +42,21 @@ def _selected_statuses(raw_statuses: str) -> set[str]:
     return {token.strip() for token in raw_statuses.split(",") if token.strip()}
 
 
+def _parse_archive_overrides(raw_values: list[str]) -> dict[str, Path]:
+    overrides: dict[str, Path] = {}
+    for raw_value in raw_values:
+        token = raw_value.strip()
+        if not token:
+            continue
+        node_key, separator, archive_path = token.partition("=")
+        if not separator or not node_key.strip() or not archive_path.strip():
+            raise ValueError(
+                "Archive overrides must use the format NODE_KEY=/absolute/or/relative/path.zip"
+            )
+        overrides[node_key.strip()] = Path(archive_path.strip()).resolve()
+    return overrides
+
+
 def _iter_registry_nodes(statuses: set[str]) -> list[dict[str, Any]]:
     registry = read_json(ROOT_DIR / "nodes" / "registry.json")
     lock = read_json(ROOT_DIR / "config" / "node_lock.json")
@@ -221,9 +236,16 @@ def main() -> None:
     parser.add_argument("--package-version", default="", help="Optional package version override.")
     parser.add_argument("--download-url", default="", help="Explicit absolute download URL for latest.json.")
     parser.add_argument("--notes-url", default="", help="Explicit release notes URL for latest.json.")
+    parser.add_argument(
+        "--archive-override",
+        action="append",
+        default=[],
+        help="Optional local archive override in the form NODE_KEY=path/to/release.zip. Repeat per node.",
+    )
     args = parser.parse_args()
 
     statuses = _selected_statuses(args.statuses)
+    archive_overrides = _parse_archive_overrides(args.archive_override)
     version = args.package_version.strip() or read_version()
     output_dir = (ROOT_DIR / args.output).resolve()
     stage_dir = output_dir / f"TCollection-{version}"
@@ -242,8 +264,12 @@ def main() -> None:
             node_key = str(entry.get("key", "")).strip()
             if not node_key:
                 continue
-            repo_path = resolve_repo_path(node_key)
-            _copy_node_publish(stage_dir, node_key, repo_path)
+            archive_override = archive_overrides.get(node_key)
+            if archive_override is not None:
+                _extract_release_publish(stage_dir, node_key, archive_override)
+            else:
+                repo_path = resolve_repo_path(node_key)
+                _copy_node_publish(stage_dir, node_key, repo_path)
             included_node_entries.append(entry)
     else:
         registry_by_key = {

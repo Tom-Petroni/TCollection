@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-11",
   "nodes": [
     {
       "key": "BrushScatter",
@@ -65,7 +65,7 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "status": "stable",
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",

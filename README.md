@@ -210,6 +210,19 @@ The GitHub side is now organized around one simple rule:
 - each node keeps its own repository, CI, and releases
 - `TCollection` only decides which released versions are exposed to artists
 
+### GitHub Actions model
+
+- node repos:
+  - `pull_request` and `push` on `main`: fast smoke CI only
+  - `vX.Y.Z` tag or manual dispatch: full Windows/Linux build matrix for supported Nuke versions
+  - optional manual sync of tracked `publish/.../bin` payloads when needed
+- `TCollection`:
+  - validate metadata and release assembly on every PR / `main` push
+  - publish the artist-facing suite only from tagged releases or manual dispatch
+  - audit active node GitHub repos and release assets on a schedule
+
+This keeps daily iteration cheap while preserving one reliable release path for artists.
+
 That gives you a clean day-to-day workflow:
 
 1. update the node in its own repo

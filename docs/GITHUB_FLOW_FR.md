@@ -14,6 +14,51 @@ Avoir un cycle GitHub simple et fiable:
    - un catalogue de nodes et de liens a jour dans le repo
 5. un audit GitHub dedie peut verifier l'etat des repos et des releases de nodes
 
+## Pipeline GitHub final recommande
+
+### 1. Repo node, par exemple `TNoise`
+
+- `pull_request` et `push` sur `main`:
+  - smoke CI rapide uniquement
+  - syntaxe Python
+  - verification de l'outil de build
+- tag `vX.Y.Z` ou `workflow_dispatch`:
+  - build complet Windows + Linux
+  - matrix `13.0` a `17.0`
+  - assemblage du ZIP release du node
+- `workflow_dispatch` avec sync explicite:
+  - mise a jour optionnelle de `publish/<Node>/bin` depuis les artifacts CI
+
+L'idee est de ne pas lancer la matrice complete a chaque push sur `main`.
+On garde un feedback rapide au quotidien, et on reserve le build complet aux
+releases ou aux executions manuelles.
+
+### 2. Runtime node
+
+- workflow separe sur runners self-hosted avec Nuke installe
+- utile pour prouver qu'un node charge vraiment dans Nuke
+- a lancer sur quelques versions cles si tu veux optimiser les couts
+
+### 3. Repo `TCollection`
+
+- `validate-collection.yml`:
+  - regenere les fichiers derives
+  - valide la coherence metadata
+  - assemble une collection test depuis les releases GitHub des nodes
+- `publish-collection.yml`:
+  - revalide et reaudit avant publication
+  - assemble `TCollection-vX.Y.Z.zip`
+  - publie aussi `latest.json` et `SHA256SUMS.txt`
+- `audit-node-sources.yml`:
+  - surveille les repos et assets GitHub des nodes actifs
+
+### 4. Rythme conseille
+
+- plusieurs pushes libres sur le repo node sans gros cout CI
+- une release node quand le package est pret
+- une promotion dans `TCollection`
+- une release collection quand tu veux livrer aux artistes
+
 ## Flux node -> collection
 
 Quand un node change:
@@ -147,6 +192,9 @@ Verifie:
 
 Fait:
 
+- resynchronisation des fichiers derives
+- validation stricte de la metadata collection
+- audit strict des releases GitHub des nodes actifs
 - assemblage depuis `github-release`
 - generation du ZIP
 - generation de `latest.json`
