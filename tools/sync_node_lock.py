@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +91,6 @@ def _build_lock(registry: dict[str, Any], node_repos: dict[str, Any]) -> dict[st
     out_nodes.sort(key=lambda item: item["key"])
     return {
         "schema_version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "registry_updated_at": registry.get("updated_at", ""),
         "nodes": out_nodes,
     }
