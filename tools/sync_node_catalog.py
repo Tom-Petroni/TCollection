@@ -6,7 +6,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _collection_utils import NODE_LOCK_PATH, NODE_REPOS_PATH, REGISTRY_PATH, read_json, write_json
+from _collection_utils import (
+    NODE_LOCK_PATH,
+    NODE_REPOS_PATH,
+    REGISTRY_PATH,
+    read_json,
+    resolve_node_repo_ref,
+    write_json,
+)
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CATALOG_JSON_PATH = ROOT_DIR / "nodes" / "catalog.json"
@@ -14,10 +21,6 @@ CATALOG_DOC_PATH = ROOT_DIR / "docs" / "NODE_CATALOG_FR.md"
 
 
 def _build_catalog(registry: dict[str, Any], node_repos: dict[str, Any], lock: dict[str, Any]) -> dict[str, Any]:
-    mapping = node_repos.get("nodes", {})
-    if not isinstance(mapping, dict):
-        raise ValueError("config/node_repos.json:nodes must be an object")
-
     lock_by_key = {
         str(entry.get("key", "")).strip(): entry
         for entry in lock.get("nodes", [])
@@ -32,12 +35,11 @@ def _build_catalog(registry: dict[str, Any], node_repos: dict[str, Any], lock: d
         key = str(entry.get("key", "")).strip()
         lock_entry = lock_by_key.get(key, {})
         source = lock_entry.get("source", {}) if isinstance(lock_entry, dict) else {}
-        node_cfg = mapping.get(key, {})
-        node_cfg = node_cfg if isinstance(node_cfg, dict) else {}
+        repo_ref = resolve_node_repo_ref(node_repos, key, str(entry.get("version", "")).strip())
 
-        repo = str(source.get("repo", node_cfg.get("repo", ""))).strip()
-        repo_url = str(source.get("repo_url", "")).strip()
-        releases_url = str(source.get("releases_url", "")).strip()
+        repo = str(source.get("repo", repo_ref.get("repo", ""))).strip()
+        repo_url = str(source.get("repo_url", repo_ref.get("repo_url", ""))).strip()
+        releases_url = str(source.get("releases_url", repo_ref.get("releases_url", ""))).strip()
         enabled_in_collection = key in lock_by_key
 
         out_nodes.append(
@@ -101,18 +103,19 @@ def _render_markdown(catalog: dict[str, Any]) -> str:
             "",
             "## Nodes suivis mais pas encore embarques",
             "",
-            "| Node | Version | Status | Repo configure | Notes |",
+            "| Node | Version | Status | Repo cible | Notes |",
             "| --- | --- | --- | --- | --- |",
         ]
     )
 
     for node in planned_nodes:
+        repo_cell = f"[{node['repo']}]({node['repo_url']})" if node.get("repo_url") else f"`{node['repo']}`"
         lines.append(
-            "| {label} | {version} | {status} | `{repo}` | {notes} |".format(
+            "| {label} | {version} | {status} | {repo} | {notes} |".format(
                 label=node["label"],
                 version=node["version"] or "-",
                 status=node["status"] or "-",
-                repo=node["repo"] or "-",
+                repo=repo_cell if node.get("repo") else "-",
                 notes=node["notes"] or "-",
             )
         )
@@ -129,9 +132,13 @@ def _render_markdown(catalog: dict[str, Any]) -> str:
             "python tools/sync_node_lock.py",
             "python tools/sync_manifest.py",
             "python tools/sync_node_catalog.py",
+            "python tools/audit_node_sources.py --strict-enabled",
             "python tools/validate_collection.py",
             "python tools/assemble_collection.py --source github-release --statuses stable",
             "```",
+            "",
+            "Un audit GitHub plus complet peut etre genere avec",
+            "`python tools/audit_node_sources.py --strict-enabled`.",
             "",
         ]
     )

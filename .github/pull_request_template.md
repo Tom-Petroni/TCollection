@@ -8,6 +8,7 @@
 - [ ] `python tools/sync_node_lock.py`
 - [ ] `python tools/sync_manifest.py`
 - [ ] `python tools/sync_node_catalog.py`
+- [ ] `python tools/audit_node_sources.py --strict-enabled`
 - [ ] `python tools/validate_collection.py`
 - [ ] `python tools/assemble_collection.py --source github-release --statuses stable`
 

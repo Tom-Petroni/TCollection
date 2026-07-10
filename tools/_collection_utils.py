@@ -25,6 +25,44 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def format_repo_pattern(pattern: str, key: str, version: str, repo: str) -> str:
+    owner, _, name = repo.partition("/")
+    return pattern.format(
+        key=key,
+        version=version,
+        owner=owner,
+        repo=name or repo,
+        repo_full=repo,
+    )
+
+
+def resolve_node_repo_ref(node_repos: dict[str, Any], key: str, version: str) -> dict[str, Any]:
+    defaults = node_repos.get("defaults", {})
+    mapping = node_repos.get("nodes", {})
+    mapping = mapping if isinstance(mapping, dict) else {}
+    node_cfg = mapping.get(key, {})
+    node_cfg = node_cfg if isinstance(node_cfg, dict) else {}
+
+    repo_name_pattern = str(node_repos.get("repo_name_pattern", "{key}"))
+    owner = str(node_repos.get("owner", "")).strip()
+    repo = str(node_cfg.get("repo", "")).strip()
+    if not repo:
+        repo_name = format_repo_pattern(repo_name_pattern, key=key, version=version, repo="")
+        repo = f"{owner}/{repo_name}" if owner else repo_name
+
+    repo_url_pattern = str(defaults.get("repo_url_pattern", "https://github.com/{repo_full}"))
+    releases_url_pattern = str(
+        defaults.get("releases_url_pattern", "https://github.com/{repo_full}/releases")
+    )
+
+    return {
+        "enabled": bool(node_cfg.get("enabled", True)),
+        "repo": repo,
+        "repo_url": format_repo_pattern(repo_url_pattern, key=key, version=version, repo=repo),
+        "releases_url": format_repo_pattern(releases_url_pattern, key=key, version=version, repo=repo),
+    }
+
+
 def read_version() -> str:
     return VERSION_PATH.read_text(encoding="utf-8").strip()
 

@@ -14,14 +14,14 @@ et `config/node_lock.json`.
 
 ## Nodes suivis mais pas encore embarques
 
-| Node | Version | Status | Repo configure | Notes |
+| Node | Version | Status | Repo cible | Notes |
 | --- | --- | --- | --- | --- |
-| BrushScatter | 0.1.0 | test | `Tom-Petroni/TSuite-node-BrushScatter` | Still in validation. |
-| OnlyRender | 1.0.0 | hold | `Tom-Petroni/TSuite-node-OnlyRender` | Collection-level toolset without node creation. |
-| PRefToMotion | 0.1.0 | hold | `Tom-Petroni/TSuite-node-PRefToMotion` | Kept out of the default collection menu. |
-| TNormalRelight | 0.1.0 | stable | `Tom-Petroni/TSuite-node-TNormalRelight` | Prepared for later activation in the collection lock. |
-| TSMAA | 0.1.0 | test | `Tom-Petroni/TSuite-node-TSMAA` | Still in validation. |
-| TScatter | 0.1.0 | test | `Tom-Petroni/TSuite-node-TScatter` | Still in validation. |
+| BrushScatter | 0.1.0 | test | [Tom-Petroni/BrushScatter](https://github.com/Tom-Petroni/BrushScatter) | Still in validation. |
+| OnlyRender | 1.0.0 | hold | [Tom-Petroni/OnlyRender](https://github.com/Tom-Petroni/OnlyRender) | Collection-level toolset without node creation. |
+| PRefToMotion | 0.1.0 | hold | [Tom-Petroni/PRefToMotion](https://github.com/Tom-Petroni/PRefToMotion) | Kept out of the default collection menu. |
+| TNormalRelight | 0.1.0 | stable | [Tom-Petroni/TNormalRelight](https://github.com/Tom-Petroni/TNormalRelight) | Prepared for later activation in the collection lock. |
+| TSMAA | 0.1.0 | test | [Tom-Petroni/TSMAA](https://github.com/Tom-Petroni/TSMAA) | Still in validation. |
+| TScatter | 0.1.0 | test | [Tom-Petroni/TScatter](https://github.com/Tom-Petroni/TScatter) | Still in validation. |
 
 ## Mise a jour rapide d'un node
 
@@ -32,7 +32,11 @@ python tools/promote_node.py TNoise
 python tools/sync_node_lock.py
 python tools/sync_manifest.py
 python tools/sync_node_catalog.py
+python tools/audit_node_sources.py --strict-enabled
 python tools/validate_collection.py
 python tools/assemble_collection.py --source github-release --statuses stable
 ```
+
+Un audit GitHub plus complet peut etre genere avec
+`python tools/audit_node_sources.py --strict-enabled`.
 

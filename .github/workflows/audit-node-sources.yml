@@ -1,0 +1,35 @@
+name: Audit Node Sources
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync generated metadata
+        run: |
+          python tools/sync_node_lock.py
+          python tools/sync_manifest.py
+          python tools/sync_node_catalog.py
+
+      - name: Audit node GitHub sources
+        run: python tools/audit_node_sources.py --strict-enabled --write-json audit/node_source_audit.json --write-md audit/NODE_SOURCE_AUDIT_FR.md
+
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-source-audit
+          path: audit
+          if-no-files-found: error

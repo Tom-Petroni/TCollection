@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 dist/
 dist_ci*/
+audit/
 build/
 .pytest_cache/
 .mypy_cache/

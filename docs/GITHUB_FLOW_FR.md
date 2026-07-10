@@ -12,6 +12,7 @@ Avoir un cycle GitHub simple et fiable:
    - `latest.json`
    - `SHA256SUMS.txt`
    - un catalogue de nodes et de liens a jour dans le repo
+5. un audit GitHub dedie peut verifier l'etat des repos et des releases de nodes
 
 ## Flux node -> collection
 
@@ -31,11 +32,22 @@ python tools/promote_node.py TNoise
 python tools/sync_node_lock.py
 python tools/sync_manifest.py
 python tools/sync_node_catalog.py
+python tools/audit_node_sources.py --strict-enabled
 python tools/validate_collection.py
 python tools/assemble_collection.py --source github-release --statuses stable
 ```
 
 5. commit et push sur `main`
+
+### Standard de nommage
+
+Le repo GitHub public d'un node doit suivre le nom du node:
+
+- `TNormalRelight` -> `Tom-Petroni/TNormalRelight`
+- `TSMAA` -> `Tom-Petroni/TSMAA`
+- `TScatter` -> `Tom-Petroni/TScatter`
+
+Le detail est documente dans `docs/NODE_REPO_STANDARD_FR.md`.
 
 ### Ce que fait `promote_node.py`
 
@@ -48,6 +60,7 @@ Le script:
 5. regenere `nodes/catalog.json`
 6. regenere `docs/NODE_CATALOG_FR.md`
 7. valide la coherence du tout
+8. peut etre suivi d'un audit GitHub des repos et releases
 
 ### Cas concret: mise a jour de `TNoise`
 
@@ -101,6 +114,8 @@ Le repo TCollection doit aussi garder a jour:
 - `nodes/catalog.json`
 - `docs/NODE_CATALOG_FR.md`
 
+Un rapport d'audit local ou CI peut aussi etre genere dans `audit/`.
+
 ## Pourquoi `latest.json`
 
 Il permet a un updater de connaitre rapidement:
@@ -137,3 +152,11 @@ Fait:
 - generation de `latest.json`
 - generation de `SHA256SUMS.txt`
 - publication des assets sur la release taggee
+
+### `audit-node-sources.yml`
+
+Fait:
+
+- verification des repos GitHub de nodes
+- verification des releases et assets attendus pour les nodes actifs
+- upload d'un rapport d'audit en artifact GitHub Actions

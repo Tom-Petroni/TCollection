@@ -29,27 +29,27 @@
     },
     "TNormalRelight": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-TNormalRelight"
+      "repo": "Tom-Petroni/TNormalRelight"
     },
     "TSMAA": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-TSMAA"
+      "repo": "Tom-Petroni/TSMAA"
     },
     "TScatter": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-TScatter"
+      "repo": "Tom-Petroni/TScatter"
     },
     "BrushScatter": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-BrushScatter"
+      "repo": "Tom-Petroni/BrushScatter"
     },
     "PRefToMotion": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-PRefToMotion"
+      "repo": "Tom-Petroni/PRefToMotion"
     },
     "OnlyRender": {
       "enabled": false,
-      "repo": "Tom-Petroni/TSuite-node-OnlyRender"
+      "repo": "Tom-Petroni/OnlyRender"
     }
   }
 }

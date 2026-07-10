@@ -30,6 +30,7 @@ Current nodes shipped through the collection:
 - [TNoise](https://github.com/Tom-Petroni/TNoise)
 
 The generated catalog lives in [docs/NODE_CATALOG_FR.md](docs/NODE_CATALOG_FR.md).
+The node repository naming convention lives in [docs/NODE_REPO_STANDARD_FR.md](docs/NODE_REPO_STANDARD_FR.md).
 
 ## Repository layout
 
@@ -61,6 +62,7 @@ python tools/promote_node.py TNoise
 python tools/sync_node_lock.py
 python tools/sync_manifest.py
 python tools/sync_node_catalog.py
+python tools/audit_node_sources.py --strict-enabled
 python tools/validate_collection.py
 ```
 
@@ -128,3 +130,11 @@ That gives you a clean day-to-day workflow:
 4. review the generated metadata and catalog changes
 5. merge to `main`
 6. tag `TCollection` when you want a new artist-facing package
+
+There is also a dedicated GitHub audit workflow:
+
+- `.github/workflows/audit-node-sources.yml`
+
+It checks that active node repos, release tags, and expected assets still exist
+on GitHub while keeping planned nodes visible without blocking the main
+collection packaging flow.
