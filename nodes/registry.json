@@ -65,7 +65,7 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "status": "stable",
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",

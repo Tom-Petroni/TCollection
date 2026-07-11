@@ -49,7 +49,7 @@
     },
     {
       "key": "TNoise",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "status": "stable",
       "label": "TNoise",
       "source": {
@@ -57,9 +57,9 @@
         "repo": "Tom-Petroni/TNoise",
         "repo_url": "https://github.com/Tom-Petroni/TNoise",
         "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
-        "tag": "v2.0.1",
-        "asset_name": "TNoise-v2.0.1.zip",
-        "archive_root": "TNoise-2.0.1"
+        "tag": "v2.1.0",
+        "asset_name": "TNoise-v2.1.0.zip",
+        "archive_root": "TNoise-2.1.0"
       }
     }
   ]

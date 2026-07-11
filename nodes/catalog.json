@@ -83,14 +83,14 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "status": "stable",
       "enabled_in_collection": true,
       "repo": "Tom-Petroni/TNoise",
       "repo_url": "https://github.com/Tom-Petroni/TNoise",
       "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
-      "tag": "v2.0.1",
-      "asset_name": "TNoise-v2.0.1.zip",
+      "tag": "v2.1.0",
+      "asset_name": "TNoise-v2.1.0.zip",
       "notes": "Legacy CUDA variant retained separately as TNoiseCuda"
     },
     {
