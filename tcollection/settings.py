@@ -1,7 +1,8 @@
-"""Qt settings dialog for TCollection."""
+"""Single-page Qt settings dialog for TCollection."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import nuke  # ty: ignore[unresolved-import]
@@ -15,35 +16,71 @@ except Exception:  # pragma: no cover - fallback for newer runtimes
     from PySide6 import QtCore, QtGui, QtWidgets  # type: ignore[import-not-found]
 
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
 _SETTINGS_DIALOG: "TCollectionSettingsDialog | None" = None
 
 
 def _status_style(status: str) -> tuple[str, str]:
     normalized = status.strip().lower()
     if normalized == "stable":
-        return "#1f3a27", "#99e0ad"
+        return "#1f3a27", "#9ce2b0"
     if normalized == "test":
-        return "#463519", "#f0cd88"
+        return "#47371d", "#f4d18f"
     if normalized == "hold":
-        return "#3f2c42", "#ddb6e5"
-    return "#25303c", "#b6c1cb"
+        return "#3b2d42", "#dfbbe6"
+    return "#25303c", "#bdc6cf"
 
 
-class NodeCardWidget(QtWidgets.QFrame):
-    """Card row used in the Nodes tab."""
+def _clear_layout(layout: QtWidgets.QLayout) -> None:
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget()
+        child_layout = item.layout()
+        if widget is not None:
+            widget.deleteLater()
+        elif child_layout is not None:
+            _clear_layout(child_layout)
 
-    def __init__(self, entry: dict[str, Any]) -> None:
+
+def _iter_runtime_files(root_name: str) -> list[Path]:
+    root = ROOT_DIR / root_name
+    if not root.is_dir():
+        return []
+
+    files: list[Path] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.name.lower() == "readme.md":
+            continue
+        files.append(path)
+    return files
+
+
+class AssetCardWidget(QtWidgets.QFrame):
+    """Card used for nodes, gizmos, and scripts."""
+
+    def __init__(
+        self,
+        title: str,
+        subtitle: str,
+        badge_text: str,
+        notes: str = "",
+        icon_path: str = "",
+        badge_status: str = "",
+    ) -> None:
         super().__init__()
-        self.setObjectName("NodeCard")
+        self.setObjectName("AssetCard")
+
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(14)
 
         icon_holder = QtWidgets.QLabel()
-        icon_holder.setFixedSize(42, 42)
+        icon_holder.setFixedSize(44, 44)
         icon_holder.setAlignment(QtCore.Qt.AlignCenter)
-        icon_holder.setObjectName("NodeIcon")
-        icon_path = resolve_node_icon_path(str(entry.get("key", "")).strip())
+        icon_holder.setObjectName("AssetIcon")
+
         if icon_path:
             pixmap = QtGui.QPixmap(icon_path)
             if not pixmap.isNull():
@@ -56,60 +93,58 @@ class NodeCardWidget(QtWidgets.QFrame):
                     )
                 )
         else:
-            icon_holder.setText(str(entry.get("label", "?"))[:1].upper())
+            icon_holder.setText((title or "?")[:1].upper())
+
         layout.addWidget(icon_holder, 0, QtCore.Qt.AlignTop)
 
-        copy = QtWidgets.QVBoxLayout()
-        copy.setSpacing(4)
+        content = QtWidgets.QVBoxLayout()
+        content.setSpacing(4)
 
-        header_row = QtWidgets.QHBoxLayout()
-        header_row.setSpacing(8)
+        header = QtWidgets.QHBoxLayout()
+        header.setSpacing(8)
 
-        title = QtWidgets.QLabel(str(entry.get("label", entry.get("key", ""))).strip())
-        title.setObjectName("NodeTitle")
-        header_row.addWidget(title)
+        title_label = QtWidgets.QLabel(title)
+        title_label.setObjectName("AssetTitle")
+        header.addWidget(title_label)
 
-        version = QtWidgets.QLabel(str(entry.get("version", "")).strip())
-        version.setObjectName("NodeVersionPill")
-        header_row.addWidget(version, 0, QtCore.Qt.AlignVCenter)
-        header_row.addStretch(1)
+        badge = QtWidgets.QLabel(badge_text)
+        badge.setObjectName("AssetBadge")
+        if badge_status:
+            badge_bg, badge_fg = _status_style(badge_status)
+            badge.setStyleSheet(
+                f"background: {badge_bg}; color: {badge_fg}; border: 1px solid transparent;"
+            )
+        header.addWidget(badge, 0, QtCore.Qt.AlignVCenter)
+        header.addStretch(1)
+        content.addLayout(header)
 
-        status_text = str(entry.get("status", "")).strip() or "unknown"
-        status_bg, status_fg = _status_style(status_text)
-        status = QtWidgets.QLabel(status_text.upper())
-        status.setObjectName("NodeStatusPill")
-        status.setStyleSheet(
-            f"background: {status_bg}; color: {status_fg}; border: 1px solid transparent;"
-        )
-        header_row.addWidget(status, 0, QtCore.Qt.AlignVCenter)
-        copy.addLayout(header_row)
+        subtitle_label = QtWidgets.QLabel(subtitle)
+        subtitle_label.setObjectName("AssetSubtitle")
+        content.addWidget(subtitle_label)
 
-        subtitle = QtWidgets.QLabel(str(entry.get("class_name", "")).strip() or "Node runtime")
-        subtitle.setObjectName("NodeSubtitle")
-        copy.addWidget(subtitle)
-
-        notes = str(entry.get("notes", "")).strip()
         if notes:
             notes_label = QtWidgets.QLabel(notes)
-            notes_label.setObjectName("NodeNotes")
+            notes_label.setObjectName("AssetNotes")
             notes_label.setWordWrap(True)
-            copy.addWidget(notes_label)
+            content.addWidget(notes_label)
 
-        layout.addLayout(copy, 1)
+        layout.addLayout(content, 1)
 
 
 class TCollectionSettingsDialog(QtWidgets.QDialog):
-    """Central settings window for collection status and updates."""
+    """Single scrollable settings page inspired by the portfolio layout."""
 
     def __init__(self) -> None:
         super().__init__()
         self._update_result: dict[str, Any] | None = None
+        self._fade_animation: QtCore.QPropertyAnimation | None = None
         self.setWindowTitle("TCollection Settings")
         self.setObjectName("TCollectionSettingsDialog")
-        self.setMinimumSize(1040, 760)
+        self.setMinimumSize(1040, 820)
         self.setModal(False)
         self._build_ui()
         self.refresh_all()
+        self._animate_in()
 
     def _build_ui(self) -> None:
         self.setStyleSheet(
@@ -119,60 +154,49 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 color: #f5f5f5;
                 font-family: "DM Sans", "Manrope", "Segoe UI", sans-serif;
             }
-            QFrame#TopBar {
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QWidget#ScrollContent {
+                background: transparent;
+            }
+            QFrame#FloatingBar {
                 background: rgba(18, 18, 18, 0.88);
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 26px;
             }
-            QFrame#HeroCard, QFrame#PanelCard, QFrame#NodeCard {
+            QFrame#HeroCard, QFrame#PanelCard, QFrame#AssetCard, QFrame#StatCard {
                 background: rgba(18, 18, 18, 0.82);
                 border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 28px;
             }
-            QFrame#StatCard {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.07);
+            QFrame#HeroCard, QFrame#PanelCard {
+                border-radius: 30px;
+            }
+            QFrame#AssetCard {
                 border-radius: 22px;
             }
-            QLabel#BrandTitle {
-                font-size: 14px;
+            QFrame#StatCard {
+                border-radius: 22px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.07);
+            }
+            QLabel#FloatingText {
+                font-size: 12px;
                 font-weight: 500;
+                color: #e6e6e6;
                 letter-spacing: 0.04em;
-                color: #f5f5f5;
             }
             QLabel#VersionPill {
-                background: rgba(255, 255, 255, 0.06);
+                background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 13px;
-                color: #b8b8b8;
+                color: #bbbbbb;
                 font-size: 11px;
                 font-family: Consolas, "SFMono-Regular", monospace;
                 padding: 5px 9px;
             }
-            QTabWidget::pane {
-                border: none;
-                background: transparent;
-                top: -1px;
-            }
-            QTabBar::tab {
-                background: transparent;
-                color: #8f8f8f;
-                border: none;
-                padding: 10px 18px;
-                margin: 0 2px;
-                border-radius: 18px;
-                font-size: 12px;
-                font-weight: 500;
-            }
-            QTabBar::tab:selected {
-                background: rgba(255, 255, 255, 0.08);
-                color: #ffffff;
-            }
-            QTabBar::tab:hover:!selected {
-                background: rgba(255, 255, 255, 0.04);
-                color: #d4d4d4;
-            }
-            QLabel#HeroEyebrow {
+            QLabel#HeroKicker {
                 font-size: 11px;
                 font-weight: 500;
                 letter-spacing: 0.22em;
@@ -181,23 +205,34 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             }
             QLabel#HeroTitle {
                 font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 34px;
+                font-size: 42px;
                 font-weight: 600;
                 color: #ffffff;
             }
             QLabel#HeroBody {
                 font-size: 14px;
-                line-height: 1.6;
-                color: #b9b9b9;
+                line-height: 1.7;
+                color: #b6b6b6;
             }
-            QLabel#StatusPill {
+            QLabel#HeroPill {
                 background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
+                border-radius: 14px;
                 color: #ededed;
                 font-size: 11px;
                 font-weight: 600;
-                padding: 5px 10px;
+                padding: 6px 12px;
+            }
+            QLabel#SectionTitle {
+                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+                font-size: 28px;
+                font-weight: 600;
+                color: #ffffff;
+            }
+            QLabel#SectionBody {
+                font-size: 13px;
+                line-height: 1.7;
+                color: #afafaf;
             }
             QLabel#StatKicker {
                 font-size: 10px;
@@ -208,24 +243,13 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             }
             QLabel#StatValue {
                 font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 20px;
+                font-size: 22px;
                 font-weight: 600;
                 color: #f7f7f7;
             }
             QLabel#StatNote {
                 font-size: 12px;
                 color: #9a9a9a;
-            }
-            QLabel#SectionTitle {
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 24px;
-                font-weight: 600;
-                color: #ffffff;
-            }
-            QLabel#SectionBody {
-                font-size: 13px;
-                line-height: 1.6;
-                color: #afafaf;
             }
             QLabel#InfoLabel {
                 font-size: 11px;
@@ -238,22 +262,22 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 font-size: 13px;
                 color: #ececec;
             }
-            QLabel#NodeTitle {
+            QLabel#AssetTitle {
                 font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 19px;
+                font-size: 18px;
                 font-weight: 600;
                 color: #ffffff;
             }
-            QLabel#NodeSubtitle {
+            QLabel#AssetSubtitle {
                 font-size: 12px;
-                color: #9e9e9e;
+                color: #a0a0a0;
             }
-            QLabel#NodeNotes {
+            QLabel#AssetNotes {
                 font-size: 12px;
-                line-height: 1.5;
-                color: #7e7e7e;
+                line-height: 1.6;
+                color: #7f7f7f;
             }
-            QLabel#NodeVersionPill {
+            QLabel#AssetBadge {
                 background: rgba(255, 255, 255, 0.04);
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 11px;
@@ -262,47 +286,19 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 font-family: Consolas, "SFMono-Regular", monospace;
                 padding: 4px 8px;
             }
-            QLabel#NodeStatusPill {
-                border-radius: 11px;
-                font-size: 10px;
-                font-weight: 700;
-                padding: 4px 8px;
-            }
-            QLabel#NodeIcon {
+            QLabel#AssetIcon {
                 background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.07);
-                border-radius: 21px;
+                border-radius: 22px;
                 color: #d9d9d9;
                 font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
                 font-size: 13px;
                 font-weight: 700;
             }
-            QListWidget {
-                background: transparent;
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                background: transparent;
-                border: none;
-                margin: 0 0 10px 0;
-            }
-            QScrollArea {
-                background: transparent;
-                border: none;
-            }
-            QScrollBar:vertical {
-                background: transparent;
-                width: 10px;
-                margin: 8px 0 8px 0;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 0.14);
-                border-radius: 5px;
-                min-height: 30px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
+            QLabel#EmptyState {
+                font-size: 13px;
+                color: #8c8c8c;
+                padding: 4px 0;
             }
             QPushButton {
                 background: rgba(255, 255, 255, 0.05);
@@ -329,302 +325,239 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             QPushButton#PrimaryButton:hover {
                 background: #ffffff;
             }
-            QFrame#UpdateStateCard {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.07);
-                border-radius: 22px;
+            QScrollBar:vertical {
+                background: transparent;
+                width: 10px;
+                margin: 8px 0 8px 0;
             }
-            QLabel#UpdateStateTitle {
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 20px;
-                font-weight: 600;
-                color: #ffffff;
+            QScrollBar::handle:vertical {
+                background: rgba(255, 255, 255, 0.14);
+                border-radius: 5px;
+                min-height: 30px;
             }
-            QLabel#UpdateStateText, QLabel#AboutText {
-                font-size: 13px;
-                line-height: 1.7;
-                color: #b6b6b6;
-            }
-            QLabel#ReleaseLink {
-                color: #d0d0d0;
-                font-size: 12px;
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
             """
         )
 
-        self.resize(1120, 820)
+        self.resize(1140, 860)
         self.setFont(QtGui.QFont("DM Sans", 10))
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(22, 22, 22, 22)
-        layout.setSpacing(18)
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setContentsMargins(22, 22, 22, 22)
+        outer.setSpacing(18)
 
-        top_bar = QtWidgets.QFrame()
-        top_bar.setObjectName("TopBar")
-        top_layout = QtWidgets.QHBoxLayout(top_bar)
-        top_layout.setContentsMargins(18, 12, 18, 12)
-        top_layout.setSpacing(14)
+        floating_bar = QtWidgets.QFrame()
+        floating_bar.setObjectName("FloatingBar")
+        floating_layout = QtWidgets.QHBoxLayout(floating_bar)
+        floating_layout.setContentsMargins(18, 12, 18, 12)
+        floating_layout.setSpacing(12)
 
-        brand = QtWidgets.QLabel("Thomas Petroni / TCollection")
-        brand.setObjectName("BrandTitle")
-        top_layout.addWidget(brand)
+        self._floating_label = QtWidgets.QLabel("Thomas Petroni / TCollection")
+        self._floating_label.setObjectName("FloatingText")
+        floating_layout.addWidget(self._floating_label)
 
         self._version_pill = QtWidgets.QLabel("v0.0.0")
         self._version_pill.setObjectName("VersionPill")
-        top_layout.addWidget(self._version_pill, 0, QtCore.Qt.AlignLeft)
-        top_layout.addStretch(1)
+        floating_layout.addWidget(self._version_pill, 0, QtCore.Qt.AlignLeft)
+        floating_layout.addStretch(1)
 
         close_button = QtWidgets.QPushButton("Close")
         close_button.clicked.connect(self.close)
-        top_layout.addWidget(close_button)
-        layout.addWidget(top_bar)
+        floating_layout.addWidget(close_button)
+        outer.addWidget(floating_bar)
 
-        self._tabs = QtWidgets.QTabWidget()
-        self._tabs.setDocumentMode(True)
-        self._tabs.setTabPosition(QtWidgets.QTabWidget.North)
-        self._tabs.setMovable(False)
-        layout.addWidget(self._tabs, 1)
+        self._scroll = QtWidgets.QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        outer.addWidget(self._scroll, 1)
 
-        self._overview_page = self._build_overview_page()
-        self._nodes_page = self._build_nodes_page()
-        self._updates_page = self._build_updates_page()
-        self._about_page = self._build_about_page()
+        scroll_content = QtWidgets.QWidget()
+        scroll_content.setObjectName("ScrollContent")
+        self._scroll.setWidget(scroll_content)
 
-        self._tabs.addTab(self._overview_page, "Overview")
-        self._tabs.addTab(self._nodes_page, "Nodes")
-        self._tabs.addTab(self._updates_page, "Updates")
-        self._tabs.addTab(self._about_page, "About")
+        scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(0, 0, 0, 10)
+        scroll_layout.setSpacing(0)
 
-    def _build_overview_page(self) -> QtWidgets.QWidget:
-        page = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(page)
-        layout.setContentsMargins(0, 12, 0, 0)
-        layout.setSpacing(18)
+        center_wrapper = QtWidgets.QWidget()
+        center_layout = QtWidgets.QVBoxLayout(center_wrapper)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(18)
+        scroll_layout.addWidget(center_wrapper, 0, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop)
 
-        hero = QtWidgets.QFrame()
-        hero.setObjectName("HeroCard")
-        hero_layout = QtWidgets.QVBoxLayout(hero)
-        hero_layout.setContentsMargins(26, 26, 26, 26)
-        hero_layout.setSpacing(10)
+        self._content_frame = QtWidgets.QFrame()
+        self._content_frame.setObjectName("ContentFrame")
+        self._content_frame.setMaximumWidth(980)
+        content_layout = QtWidgets.QVBoxLayout(self._content_frame)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(18)
+        center_layout.addWidget(self._content_frame)
 
-        eyebrow = QtWidgets.QLabel("Collection manager")
-        eyebrow.setObjectName("HeroEyebrow")
-        hero_layout.addWidget(eyebrow)
+        self._hero_card = self._build_hero_card()
+        self._updates_card = self._build_updates_card()
+        self._assets_intro_card = self._build_assets_intro_card()
+        self._nodes_card, self._nodes_items_layout = self._build_asset_section_card(
+            "Nodes",
+            "Native nodes currently tracked by the collection package.",
+        )
+        self._gizmos_card, self._gizmos_items_layout = self._build_asset_section_card(
+            "Gizmos",
+            "Reusable gizmos shipped in the collection package.",
+        )
+        self._scripts_card, self._scripts_items_layout = self._build_asset_section_card(
+            "Scripts",
+            "Utility scripts available alongside the collection runtime.",
+        )
+
+        content_layout.addWidget(self._hero_card)
+        content_layout.addWidget(self._updates_card)
+        content_layout.addWidget(self._assets_intro_card)
+        content_layout.addWidget(self._nodes_card)
+        content_layout.addWidget(self._gizmos_card)
+        content_layout.addWidget(self._scripts_card)
+        content_layout.addStretch(1)
+
+    def _build_hero_card(self) -> QtWidgets.QFrame:
+        card = QtWidgets.QFrame()
+        card.setObjectName("HeroCard")
+        layout = QtWidgets.QVBoxLayout(card)
+        layout.setContentsMargins(30, 34, 30, 34)
+        layout.setSpacing(12)
+
+        self._hero_kicker = QtWidgets.QLabel("Collection manager")
+        self._hero_kicker.setObjectName("HeroKicker")
+        self._hero_kicker.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self._hero_kicker)
 
         self._hero_title = QtWidgets.QLabel("TCollection")
         self._hero_title.setObjectName("HeroTitle")
-        hero_layout.addWidget(self._hero_title)
+        self._hero_title.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self._hero_title)
 
         self._hero_body = QtWidgets.QLabel("")
         self._hero_body.setObjectName("HeroBody")
+        self._hero_body.setAlignment(QtCore.Qt.AlignCenter)
         self._hero_body.setWordWrap(True)
-        hero_layout.addWidget(self._hero_body)
+        layout.addWidget(self._hero_body)
 
-        self._hero_status = QtWidgets.QLabel("")
-        self._hero_status.setObjectName("StatusPill")
-        hero_layout.addWidget(self._hero_status, 0, QtCore.Qt.AlignLeft)
-        layout.addWidget(hero)
+        self._hero_pill = QtWidgets.QLabel("")
+        self._hero_pill.setObjectName("HeroPill")
+        self._hero_pill.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self._hero_pill, 0, QtCore.Qt.AlignHCenter)
+        return card
+
+    def _build_updates_card(self) -> QtWidgets.QFrame:
+        card = QtWidgets.QFrame()
+        card.setObjectName("PanelCard")
+        layout = QtWidgets.QVBoxLayout(card)
+        layout.setContentsMargins(28, 28, 28, 28)
+        layout.setSpacing(16)
+
+        title = QtWidgets.QLabel("Updates & Versions")
+        title.setObjectName("SectionTitle")
+        layout.addWidget(title)
+
+        body = QtWidgets.QLabel(
+            "Check the latest GitHub release, prepare the next install for the following Nuke launch, and keep an eye on the managed package state."
+        )
+        body.setObjectName("SectionBody")
+        body.setWordWrap(True)
+        layout.addWidget(body)
 
         stats_row = QtWidgets.QHBoxLayout()
         stats_row.setSpacing(14)
         layout.addLayout(stats_row)
 
-        self._collection_version = self._build_stat_card("Collection Version", "Installed release package.")
+        self._collection_version = self._build_stat_card("Collection Version", "Installed collection package.")
         self._managed_version = self._build_stat_card("Managed Version", "Currently active managed version.")
-        self._pending_version = self._build_stat_card("Pending Version", "Will activate on next Nuke launch.")
-        self._node_count = self._build_stat_card("Visible Nodes", "Stable and test nodes registered in the menu.")
+        self._pending_version = self._build_stat_card("Pending Version", "Will activate on next launch.")
+        self._latest_version = self._build_stat_card("Latest Release", "Last published GitHub release.")
 
         stats_row.addWidget(self._collection_version["card"], 1)
         stats_row.addWidget(self._managed_version["card"], 1)
         stats_row.addWidget(self._pending_version["card"], 1)
-        stats_row.addWidget(self._node_count["card"], 1)
+        stats_row.addWidget(self._latest_version["card"], 1)
 
-        info_card = QtWidgets.QFrame()
-        info_card.setObjectName("PanelCard")
-        info_layout = QtWidgets.QVBoxLayout(info_card)
-        info_layout.setContentsMargins(24, 24, 24, 24)
-        info_layout.setSpacing(14)
-
-        title = QtWidgets.QLabel("Install Paths")
-        title.setObjectName("SectionTitle")
-        info_layout.addWidget(title)
-
-        body = QtWidgets.QLabel(
-            "This section tracks where the runtime is currently loaded from and where managed updates are staged."
-        )
-        body.setObjectName("SectionBody")
-        body.setWordWrap(True)
-        info_layout.addWidget(body)
-
-        form = QtWidgets.QFormLayout()
-        form.setContentsMargins(0, 10, 0, 0)
-        form.setSpacing(12)
-        self._runtime_root = self._build_info_value(word_wrap=True)
-        self._managed_root = self._build_info_value(word_wrap=True)
-        self._versions_root = self._build_info_value(word_wrap=True)
-        form.addRow(self._build_info_label("Runtime Root"), self._runtime_root)
-        form.addRow(self._build_info_label("Managed Root"), self._managed_root)
-        form.addRow(self._build_info_label("Versions Root"), self._versions_root)
-        info_layout.addLayout(form)
-        layout.addWidget(info_card)
-
-        layout.addStretch(1)
-        return page
-
-    def _build_nodes_page(self) -> QtWidgets.QWidget:
-        page = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(page)
-        layout.setContentsMargins(0, 12, 0, 0)
-        layout.setSpacing(18)
-
-        intro = QtWidgets.QFrame()
-        intro.setObjectName("PanelCard")
-        intro_layout = QtWidgets.QVBoxLayout(intro)
-        intro_layout.setContentsMargins(24, 24, 24, 24)
-        intro_layout.setSpacing(8)
-
-        title = QtWidgets.QLabel("Nodes")
-        title.setObjectName("SectionTitle")
-        intro_layout.addWidget(title)
-
-        self._nodes_intro = QtWidgets.QLabel("")
-        self._nodes_intro.setObjectName("SectionBody")
-        self._nodes_intro.setWordWrap(True)
-        intro_layout.addWidget(self._nodes_intro)
-        layout.addWidget(intro)
-
-        self._nodes_list = QtWidgets.QListWidget()
-        self._nodes_list.setSpacing(0)
-        layout.addWidget(self._nodes_list, 1)
-        return page
-
-    def _build_updates_page(self) -> QtWidgets.QWidget:
-        page = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(page)
-        layout.setContentsMargins(0, 12, 0, 0)
-        layout.setSpacing(18)
-
-        state_card = QtWidgets.QFrame()
-        state_card.setObjectName("HeroCard")
-        state_layout = QtWidgets.QVBoxLayout(state_card)
-        state_layout.setContentsMargins(26, 24, 26, 24)
-        state_layout.setSpacing(10)
-
-        kicker = QtWidgets.QLabel("Managed updates")
-        kicker.setObjectName("HeroEyebrow")
-        state_layout.addWidget(kicker)
-
-        self._update_state_title = QtWidgets.QLabel("Updates")
-        self._update_state_title.setObjectName("UpdateStateTitle")
-        state_layout.addWidget(self._update_state_title)
-
-        self._update_summary = QtWidgets.QLabel("")
-        self._update_summary.setObjectName("UpdateStateText")
-        self._update_summary.setWordWrap(True)
-        state_layout.addWidget(self._update_summary)
-        layout.addWidget(state_card)
-
-        split = QtWidgets.QHBoxLayout()
-        split.setSpacing(14)
-        layout.addLayout(split)
-
-        versions_card = QtWidgets.QFrame()
-        versions_card.setObjectName("UpdateStateCard")
-        versions_layout = QtWidgets.QVBoxLayout(versions_card)
-        versions_layout.setContentsMargins(24, 24, 24, 24)
-        versions_layout.setSpacing(12)
-        versions_title = QtWidgets.QLabel("Release State")
-        versions_title.setObjectName("SectionTitle")
-        versions_layout.addWidget(versions_title)
-
-        versions_form = QtWidgets.QFormLayout()
-        versions_form.setContentsMargins(0, 4, 0, 0)
-        versions_form.setSpacing(12)
-        self._update_current = self._build_info_value()
-        self._update_latest = self._build_info_value()
+        info_form = QtWidgets.QFormLayout()
+        info_form.setContentsMargins(0, 6, 0, 0)
+        info_form.setSpacing(12)
+        self._update_summary = self._build_info_value(word_wrap=True)
         self._update_channel = self._build_info_value()
         self._release_link = self._build_info_value(word_wrap=True)
-        versions_form.addRow(self._build_info_label("Current"), self._update_current)
-        versions_form.addRow(self._build_info_label("Latest"), self._update_latest)
-        versions_form.addRow(self._build_info_label("Channel"), self._update_channel)
-        versions_form.addRow(self._build_info_label("Release Notes"), self._release_link)
-        versions_layout.addLayout(versions_form)
-        split.addWidget(versions_card, 1)
+        self._runtime_root = self._build_info_value(word_wrap=True)
+        info_form.addRow(self._build_info_label("Update State"), self._update_summary)
+        info_form.addRow(self._build_info_label("Channel"), self._update_channel)
+        info_form.addRow(self._build_info_label("Release Notes"), self._release_link)
+        info_form.addRow(self._build_info_label("Runtime Root"), self._runtime_root)
+        layout.addLayout(info_form)
 
-        actions_card = QtWidgets.QFrame()
-        actions_card.setObjectName("UpdateStateCard")
-        actions_layout = QtWidgets.QVBoxLayout(actions_card)
-        actions_layout.setContentsMargins(24, 24, 24, 24)
-        actions_layout.setSpacing(14)
-        actions_title = QtWidgets.QLabel("Actions")
-        actions_title.setObjectName("SectionTitle")
-        actions_layout.addWidget(actions_title)
-
-        actions_body = QtWidgets.QLabel(
-            "Check the latest GitHub release, download the package into the managed versions folder, then relaunch Nuke."
-        )
-        actions_body.setObjectName("SectionBody")
-        actions_body.setWordWrap(True)
-        actions_layout.addWidget(actions_body)
+        buttons_row = QtWidgets.QHBoxLayout()
+        buttons_row.setSpacing(12)
 
         self._check_button = QtWidgets.QPushButton("Check for Updates")
         self._check_button.setObjectName("PrimaryButton")
         self._check_button.clicked.connect(self._check_for_updates)
-        actions_layout.addWidget(self._check_button)
+        buttons_row.addWidget(self._check_button)
 
         self._prepare_button = QtWidgets.QPushButton("Download for Next Launch")
         self._prepare_button.setEnabled(False)
         self._prepare_button.clicked.connect(self._prepare_update)
-        actions_layout.addWidget(self._prepare_button)
+        buttons_row.addWidget(self._prepare_button)
 
         self._notes_button = QtWidgets.QPushButton("Open Release Notes")
         self._notes_button.setEnabled(False)
         self._notes_button.clicked.connect(self._open_release_notes)
-        actions_layout.addWidget(self._notes_button)
-        actions_layout.addStretch(1)
-        split.addWidget(actions_card, 1)
+        buttons_row.addWidget(self._notes_button)
 
-        layout.addStretch(1)
-        return page
+        buttons_row.addStretch(1)
+        layout.addLayout(buttons_row)
+        return card
 
-    def _build_about_page(self) -> QtWidgets.QWidget:
-        page = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(page)
-        layout.setContentsMargins(0, 12, 0, 0)
-        layout.setSpacing(18)
+    def _build_assets_intro_card(self) -> QtWidgets.QFrame:
+        card = QtWidgets.QFrame()
+        card.setObjectName("PanelCard")
+        layout = QtWidgets.QVBoxLayout(card)
+        layout.setContentsMargins(28, 28, 28, 28)
+        layout.setSpacing(10)
 
-        about_card = QtWidgets.QFrame()
-        about_card.setObjectName("PanelCard")
-        about_layout = QtWidgets.QVBoxLayout(about_card)
-        about_layout.setContentsMargins(28, 28, 28, 28)
-        about_layout.setSpacing(12)
-
-        title = QtWidgets.QLabel("About TCollection")
+        title = QtWidgets.QLabel("Collection Contents")
         title.setObjectName("SectionTitle")
-        about_layout.addWidget(title)
+        layout.addWidget(title)
 
-        text = QtWidgets.QLabel(
-            "TCollection is the curated runtime layer for your Nuke tools. "
-            "It keeps node installation simple for artists, tracks versions cleanly, "
-            "and prepares updates so a restart is enough to switch to the next package.\n\n"
-            "The UI direction here follows the same language as your portfolio: "
-            "deep neutral backgrounds, floating pill navigation, soft borders, and a more cinematic presentation."
-        )
-        text.setObjectName("AboutText")
-        text.setWordWrap(True)
-        about_layout.addWidget(text)
+        self._assets_intro = QtWidgets.QLabel("")
+        self._assets_intro.setObjectName("SectionBody")
+        self._assets_intro.setWordWrap(True)
+        layout.addWidget(self._assets_intro)
+        return card
 
-        self._about_version = self._build_info_value()
-        self._about_repo = self._build_info_value(word_wrap=True)
-        form = QtWidgets.QFormLayout()
-        form.setContentsMargins(0, 8, 0, 0)
-        form.setSpacing(12)
-        form.addRow(self._build_info_label("Collection Version"), self._about_version)
-        form.addRow(self._build_info_label("Repository"), self._about_repo)
-        about_layout.addLayout(form)
-        layout.addWidget(about_card)
-        layout.addStretch(1)
-        return page
+    def _build_asset_section_card(
+        self,
+        title_text: str,
+        body_text: str,
+    ) -> tuple[QtWidgets.QFrame, QtWidgets.QVBoxLayout]:
+        card = QtWidgets.QFrame()
+        card.setObjectName("PanelCard")
+        layout = QtWidgets.QVBoxLayout(card)
+        layout.setContentsMargins(28, 28, 28, 28)
+        layout.setSpacing(14)
+
+        title = QtWidgets.QLabel(title_text)
+        title.setObjectName("SectionTitle")
+        layout.addWidget(title)
+
+        body = QtWidgets.QLabel(body_text)
+        body.setObjectName("SectionBody")
+        body.setWordWrap(True)
+        layout.addWidget(body)
+
+        items_widget = QtWidgets.QWidget()
+        items_layout = QtWidgets.QVBoxLayout(items_widget)
+        items_layout.setContentsMargins(0, 8, 0, 0)
+        items_layout.setSpacing(10)
+        layout.addWidget(items_widget)
+        return card, items_layout
 
     def _build_stat_card(self, kicker: str, note: str) -> dict[str, Any]:
         card = QtWidgets.QFrame()
@@ -660,71 +593,136 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         return label
 
+    def _animate_in(self) -> None:
+        effect = QtWidgets.QGraphicsOpacityEffect(self._content_frame)
+        self._content_frame.setGraphicsEffect(effect)
+        self._fade_animation = QtCore.QPropertyAnimation(effect, b"opacity", self)
+        self._fade_animation.setDuration(260)
+        self._fade_animation.setStartValue(0.0)
+        self._fade_animation.setEndValue(1.0)
+        self._fade_animation.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self._fade_animation.start()
+
     def refresh_all(self) -> None:
         self._refresh_collection_state()
-        self._refresh_nodes_list()
+        self._refresh_asset_lists()
         self._refresh_update_summary()
 
     def _refresh_collection_state(self) -> None:
         info = get_collection_info()
         state = get_install_state()
         version = str(info.get("version", "unknown"))
-        nodes = get_nodes()
-        visible_nodes = [entry for entry in nodes if str(entry.get("class_name", "")).strip()]
+        nodes = [entry for entry in get_nodes() if str(entry.get("class_name", "")).strip()]
+        gizmo_files = _iter_runtime_files("gizmos")
+        script_files = _iter_runtime_files("scripts")
 
         self._version_pill.setText(f"v{version}")
         self._hero_title.setText(str(info.get("display_name", "TCollection")))
         self._hero_body.setText(
-            "A clean, artist-friendly collection runtime for your Nuke nodes. "
-            "Versions stay centralized, updates stay simple, and the menu remains focused."
+            "A single place inside Nuke to track the collection version, prepare updates, and browse the current package contents."
         )
-        self._hero_status.setText("Menu-ready collection with managed GitHub release updates")
+        self._hero_pill.setText("Single-page collection settings inspired by your portfolio layout")
 
         self._collection_version["value"].setText(version)
         self._managed_version["value"].setText(state.get("current_version", "") or "Not installed")
         self._pending_version["value"].setText(state.get("pending_version", "") or "None")
-        self._node_count["value"].setText(str(len(visible_nodes)))
-
         self._runtime_root.setText(state.get("runtime_root", ""))
-        self._managed_root.setText(state.get("managed_root", ""))
-        self._versions_root.setText(state.get("versions_root", ""))
 
-        self._nodes_intro.setText(
-            f"{len(visible_nodes)} visible node entries are currently registered in the collection manifest."
+        self._assets_intro.setText(
+            f"The current package exposes {len(nodes)} nodes, {len(gizmo_files)} gizmo files, and {len(script_files)} script files."
         )
 
-        self._about_version.setText(version)
-        repo_url = str(info.get("links", {}).get("repo_url", "")).strip()
-        self._about_repo.setText(repo_url or "No repository URL configured.")
+    def _refresh_asset_lists(self) -> None:
+        self._populate_nodes()
+        self._populate_gizmos()
+        self._populate_scripts()
 
-    def _refresh_nodes_list(self) -> None:
+    def _populate_nodes(self) -> None:
+        _clear_layout(self._nodes_items_layout)
         nodes = sorted(
-            get_nodes(),
+            [entry for entry in get_nodes() if str(entry.get("class_name", "")).strip()],
             key=lambda entry: str(entry.get("label", entry.get("key", ""))).lower(),
         )
 
-        self._nodes_list.clear()
-        for entry in nodes:
-            if not str(entry.get("class_name", "")).strip():
-                continue
+        if not nodes:
+            empty = QtWidgets.QLabel("No node entries are currently available in the collection.")
+            empty.setObjectName("EmptyState")
+            self._nodes_items_layout.addWidget(empty)
+            return
 
-            item = QtWidgets.QListWidgetItem()
-            card = NodeCardWidget(entry)
-            item.setSizeHint(card.sizeHint())
-            self._nodes_list.addItem(item)
-            self._nodes_list.setItemWidget(item, card)
+        for entry in nodes:
+            node_key = str(entry.get("key", "")).strip()
+            label = str(entry.get("label", node_key)).strip() or node_key
+            version = str(entry.get("version", "")).strip()
+            status = str(entry.get("status", "")).strip() or "unknown"
+            subtitle = str(entry.get("class_name", "")).strip() or "Node runtime"
+            notes = str(entry.get("notes", "")).strip()
+            icon_path = resolve_node_icon_path(node_key)
+            card = AssetCardWidget(
+                title=label,
+                subtitle=subtitle,
+                badge_text=version,
+                notes=notes,
+                icon_path=icon_path,
+                badge_status=status,
+            )
+            self._nodes_items_layout.addWidget(card)
+
+        self._nodes_items_layout.addStretch(1)
+
+    def _populate_gizmos(self) -> None:
+        _clear_layout(self._gizmos_items_layout)
+        gizmo_files = _iter_runtime_files("gizmos")
+        if not gizmo_files:
+            empty = QtWidgets.QLabel("No gizmos are packaged in the current stable collection yet.")
+            empty.setObjectName("EmptyState")
+            self._gizmos_items_layout.addWidget(empty)
+            return
+
+        for path in gizmo_files:
+            relative = path.relative_to(ROOT_DIR)
+            card = AssetCardWidget(
+                title=path.stem,
+                subtitle="Gizmo package asset",
+                badge_text=path.suffix.lower().lstrip(".") or "file",
+                notes=str(relative).replace("\\", "/"),
+                badge_status="hold",
+            )
+            self._gizmos_items_layout.addWidget(card)
+
+        self._gizmos_items_layout.addStretch(1)
+
+    def _populate_scripts(self) -> None:
+        _clear_layout(self._scripts_items_layout)
+        script_files = _iter_runtime_files("scripts")
+        if not script_files:
+            empty = QtWidgets.QLabel("No scripts are packaged in the current stable collection yet.")
+            empty.setObjectName("EmptyState")
+            self._scripts_items_layout.addWidget(empty)
+            return
+
+        for path in script_files:
+            relative = path.relative_to(ROOT_DIR)
+            card = AssetCardWidget(
+                title=path.stem,
+                subtitle="Script package asset",
+                badge_text=path.suffix.lower().lstrip(".") or "file",
+                notes=str(relative).replace("\\", "/"),
+                badge_status="test",
+            )
+            self._scripts_items_layout.addWidget(card)
+
+        self._scripts_items_layout.addStretch(1)
 
     def _refresh_update_summary(self) -> None:
         info = get_collection_info()
         current_collection_version = str(info.get("version", "unknown")).strip()
 
         if self._update_result is None:
-            self._update_state_title.setText("Updates")
+            self._latest_version["value"].setText("Not checked")
             self._update_summary.setText(
-                "No remote release has been checked yet. Query GitHub to compare the installed package with the latest published collection."
+                "No remote release has been checked yet. Use the button below to compare this install with the latest GitHub release."
             )
-            self._update_current.setText(current_collection_version)
-            self._update_latest.setText("Not checked")
             self._update_channel.setText("stable")
             self._release_link.setText("No release notes loaded.")
             self._prepare_button.setEnabled(False)
@@ -738,22 +736,19 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         channel = str(self._update_result.get("channel", "")).strip() or "stable"
         notes_url = str(self._update_result.get("notes_url", "")).strip()
 
+        self._latest_version["value"].setText(latest_version)
+        self._update_channel.setText(channel)
+        self._release_link.setText(notes_url or "No release notes URL available.")
+
         if available:
-            self._update_state_title.setText("A new release is available")
             self._update_summary.setText(
-                f"TCollection {latest_version} is ready to download. "
-                f"You are currently on {current_version}. {reason}"
+                f"TCollection {latest_version} is available. You are currently on {current_version}. {reason}"
             )
         else:
-            self._update_state_title.setText("You are up to date")
             self._update_summary.setText(
                 f"TCollection {current_version} already matches the latest published release. {reason}"
             )
 
-        self._update_current.setText(current_version)
-        self._update_latest.setText(latest_version)
-        self._update_channel.setText(channel)
-        self._release_link.setText(notes_url or "No release notes URL available.")
         self._prepare_button.setEnabled(available)
         self._notes_button.setEnabled(bool(notes_url))
 
