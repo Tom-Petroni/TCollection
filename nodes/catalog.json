@@ -70,14 +70,14 @@
     {
       "key": "TMask",
       "label": "TMask",
-      "version": "0.1.1",
+      "version": "0.1.3",
       "status": "stable",
       "enabled_in_collection": true,
       "repo": "Tom-Petroni/TMask",
       "repo_url": "https://github.com/Tom-Petroni/TMask",
       "releases_url": "https://github.com/Tom-Petroni/TMask/releases",
-      "tag": "v0.1.1",
-      "asset_name": "TMask-v0.1.1.zip",
+      "tag": "v0.1.3",
+      "asset_name": "TMask-v0.1.3.zip",
       "notes": ""
     },
     {
