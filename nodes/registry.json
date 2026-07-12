@@ -35,7 +35,7 @@
     {
       "key": "TBlur",
       "label": "TBlur",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "status": "stable",
       "class_name": "TBlur",
       "bootstrap_module": "TBlur.init",

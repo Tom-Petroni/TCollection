@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
@@ -43,7 +43,7 @@
     {
       "key": "TBlur",
       "label": "TBlur",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "status": "stable",
       "class_name": "TBlur",
       "bootstrap_module": "TBlur.init",
@@ -54,9 +54,9 @@
         "repo": "Tom-Petroni/TBlur",
         "repo_url": "https://github.com/Tom-Petroni/TBlur",
         "releases_url": "https://github.com/Tom-Petroni/TBlur/releases",
-        "tag": "v1.0.5",
-        "asset_name": "TBlur-v1.0.5.zip",
-        "archive_root": "TBlur-1.0.5"
+        "tag": "v1.0.6",
+        "asset_name": "TBlur-v1.0.6.zip",
+        "archive_root": "TBlur-1.0.6"
       }
     },
     {
