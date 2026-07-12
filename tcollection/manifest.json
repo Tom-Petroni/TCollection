@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.10",
+    "version": "0.1.12",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
