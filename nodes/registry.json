@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-07-11",
+  "updated_at": "2026-07-12",
   "nodes": [
     {
       "key": "BrushScatter",
@@ -35,7 +35,7 @@
     {
       "key": "TBlur",
       "label": "TBlur",
-      "version": "1.0.0",
+      "version": "1.0.5",
       "status": "stable",
       "class_name": "TBlur",
       "bootstrap_module": "TBlur.init",
@@ -65,7 +65,7 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.1.0",
+      "version": "2.1.3",
       "status": "stable",
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",

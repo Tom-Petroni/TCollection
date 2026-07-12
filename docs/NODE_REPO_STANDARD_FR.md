@@ -26,16 +26,34 @@ Le repo public doit avoir le meme nom que le node:
 
 ## Base recommandee
 
-Utiliser `Template-Node-Nuke` comme point de depart pour chaque nouveau repo node.
+Utiliser `NukeNodeTemplate` comme point de depart pour chaque nouveau repo node.
 
 ## Checklist de creation d'un nouveau repo node
 
 1. creer le repo GitHub avec le nom du node
-2. partir du template node Nuke
-3. verifier que la CI publie bien les builds Windows et Linux
-4. publier une premiere release `vX.Y.Z`
-5. ajouter ou verifier l'entree dans `config/node_repos.json`
-6. promouvoir le node dans `TCollection` si besoin
+2. generer le repo depuis `NukeNodeTemplate`
+3. verifier la presence de `node.json`, `VERSION` et `.github/workflows/`
+4. verifier que la CI publie bien les builds Windows et Linux si le node est natif
+5. publier une premiere release `vX.Y.Z`
+6. verifier que l'asset `{NodeKey}-vX.Y.Z.zip` est attache a la release
+7. ajouter ou verifier l'entree dans `config/node_repos.json`
+8. promouvoir le node dans `TCollection` si besoin
+
+## Contrat minimal attendu
+
+Chaque repo node compatible `TCollection` doit exposer:
+
+- `node.json` a la racine
+- `VERSION` en `X.Y.Z`
+- `publish/<NodeKey>/...`
+- un tag `vX.Y.Z`
+- un asset de release `{NodeKey}-vX.Y.Z.zip`
+
+Pour les nodes natifs, le template gere aussi:
+
+- build matrix Windows/Linux sur les versions Nuke supportees
+- validation du package Python avant publication
+- option de synchronisation de `publish/<NodeKey>/bin`
 
 ## Verification depuis TCollection
 

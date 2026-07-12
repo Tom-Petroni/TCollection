@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.3",
+    "version": "0.1.5",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
@@ -43,7 +43,7 @@
     {
       "key": "TBlur",
       "label": "TBlur",
-      "version": "1.0.0",
+      "version": "1.0.5",
       "status": "stable",
       "class_name": "TBlur",
       "bootstrap_module": "TBlur.init",
@@ -54,9 +54,9 @@
         "repo": "Tom-Petroni/TBlur",
         "repo_url": "https://github.com/Tom-Petroni/TBlur",
         "releases_url": "https://github.com/Tom-Petroni/TBlur/releases",
-        "tag": "v1.0.0",
-        "asset_name": "TBlur-v1.0.0.zip",
-        "archive_root": "TBlur-1.0.0"
+        "tag": "v1.0.5",
+        "asset_name": "TBlur-v1.0.5.zip",
+        "archive_root": "TBlur-1.0.5"
       }
     },
     {
@@ -100,7 +100,7 @@
     {
       "key": "TNoise",
       "label": "TNoise",
-      "version": "2.1.0",
+      "version": "2.1.3",
       "status": "stable",
       "class_name": "TNoise",
       "bootstrap_module": "TNoise.init",
@@ -111,9 +111,9 @@
         "repo": "Tom-Petroni/TNoise",
         "repo_url": "https://github.com/Tom-Petroni/TNoise",
         "releases_url": "https://github.com/Tom-Petroni/TNoise/releases",
-        "tag": "v2.1.0",
-        "asset_name": "TNoise-v2.1.0.zip",
-        "archive_root": "TNoise-2.1.0"
+        "tag": "v2.1.3",
+        "asset_name": "TNoise-v2.1.3.zip",
+        "archive_root": "TNoise-2.1.3"
       }
     },
     {
