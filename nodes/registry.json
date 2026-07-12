@@ -55,7 +55,7 @@
     {
       "key": "TMask",
       "label": "TMask",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "status": "stable",
       "class_name": "TMask",
       "bootstrap_module": "TMask.init",

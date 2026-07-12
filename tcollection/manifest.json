@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
@@ -81,7 +81,7 @@
     {
       "key": "TMask",
       "label": "TMask",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "status": "stable",
       "class_name": "TMask",
       "bootstrap_module": "TMask.init",
@@ -92,9 +92,9 @@
         "repo": "Tom-Petroni/TMask",
         "repo_url": "https://github.com/Tom-Petroni/TMask",
         "releases_url": "https://github.com/Tom-Petroni/TMask/releases",
-        "tag": "v0.1.0",
-        "asset_name": "TMask-v0.1.0.zip",
-        "archive_root": "TMask-0.1.0"
+        "tag": "v0.1.1",
+        "asset_name": "TMask-v0.1.1.zip",
+        "archive_root": "TMask-0.1.1"
       }
     },
     {

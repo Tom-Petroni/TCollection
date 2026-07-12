@@ -107,7 +107,9 @@ def _expand_user_relative_path(raw_path: str) -> Path:
         return candidate.resolve()
 
     home_dir = Path.home()
-    normalized = raw_path.replace("\\", "/").lstrip("./")
+    normalized = raw_path.replace("\\", "/")
+    if normalized.startswith("./"):
+        normalized = normalized[2:]
     return (home_dir / normalized).resolve()
 
 
@@ -152,13 +154,29 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _required_entry_paths(base_dir: Path) -> list[Path]:
+    return [
+        base_dir / "config" / "collection.json",
+        base_dir / "tcollection" / "manifest.json",
+        base_dir / "init.py",
+        base_dir / "menu.py",
+    ]
+
+
+def _is_valid_entry_root(base_dir: Path) -> bool:
+    return all(path.is_file() for path in _required_entry_paths(base_dir))
+
+
 def _candidate_entry_root(base_dir: Path) -> Path | None:
-    if (base_dir / "tcollection" / "manifest.json").is_file():
+    if not base_dir.exists() or not base_dir.is_dir():
+        return None
+
+    if _is_valid_entry_root(base_dir):
         return base_dir
 
     children = [path for path in base_dir.iterdir() if path.is_dir()]
     for child in sorted(children):
-        if (child / "tcollection" / "manifest.json").is_file():
+        if _is_valid_entry_root(child):
             return child
     return None
 
