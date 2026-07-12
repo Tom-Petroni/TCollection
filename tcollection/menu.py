@@ -6,8 +6,14 @@ from typing import Any
 
 import nuke  # ty: ignore[unresolved-import]
 
-from .loader import bootstrap_node, get_collection_info, get_node, get_nodes_by_status
-from .updater import check_for_updates, describe_install_state, prepare_update_for_next_launch
+from .loader import (
+    bootstrap_node,
+    get_collection_info,
+    get_node,
+    get_nodes_by_status,
+    resolve_node_icon_path,
+)
+from .settings import show_settings
 
 _MENU_REGISTERED = False
 _MENU_NAME = "TCollection"
@@ -45,7 +51,11 @@ def _add_node_entries(menu_obj: Any, status: str) -> None:
         class_name = str(entry.get("class_name", "")).strip()
         if not node_key or not class_name:
             continue
-        menu_obj.addCommand(label, _command_for(node_key))
+        icon_path = resolve_node_icon_path(node_key)
+        if icon_path:
+            menu_obj.addCommand(label, _command_for(node_key), icon=icon_path)
+        else:
+            menu_obj.addCommand(label, _command_for(node_key))
 
 
 def _show_about() -> None:
@@ -57,41 +67,6 @@ def _show_about() -> None:
         f"Nodes stable/test/hold drives the runtime menu and loading policy."
     )
     nuke.message(message)  # ty: ignore[unresolved-attribute]
-
-
-def _check_for_updates_ui() -> None:
-    result = check_for_updates()
-    if result["available"]:
-        if nuke.ask(  # ty: ignore[unresolved-attribute]
-            "A newer TCollection version is available.\n\n"
-            f"Current: {result['current_version']}\n"
-            f"Latest: {result['latest_version']}\n"
-            f"Channel: {result['channel']}\n\n"
-            "Download it now for the next Nuke launch?"
-        ):
-            _prepare_update_for_next_launch_ui(result)
-        return
-
-    reason = result.get("reason", "No update available.")
-    nuke.message(f"TCollection update check:\n\n{reason}")  # ty: ignore[unresolved-attribute]
-
-
-def _prepare_update_for_next_launch_ui(update_result: dict[str, Any] | None = None) -> None:
-    try:
-        prepared = prepare_update_for_next_launch(update_result)
-    except Exception as exc:
-        nuke.message(f"TCollection: failed to prepare the update.\n\n{exc}")  # ty: ignore[unresolved-attribute]
-        return
-
-    nuke.message(  # ty: ignore[unresolved-attribute]
-        "TCollection update prepared.\n\n"
-        f"Version: {prepared['version']}\n"
-        "Restart Nuke to activate it."
-    )
-
-
-def _show_install_status() -> None:
-    nuke.message(describe_install_state())  # ty: ignore[unresolved-attribute]
 
 
 def register_menu() -> None:
@@ -117,8 +92,6 @@ def register_menu() -> None:
     _add_node_entries(menu_obj, "stable")
     _add_node_entries(menu_obj, "test")
     menu_obj.addSeparator()
-    menu_obj.addCommand("Check For Updates...", "import tcollection.menu as _tm; _tm._check_for_updates_ui()")
-    menu_obj.addCommand("Prepare Update For Next Launch...", "import tcollection.menu as _tm; _tm._prepare_update_for_next_launch_ui()")
-    menu_obj.addCommand("Show Install Status", "import tcollection.menu as _tm; _tm._show_install_status()")
+    menu_obj.addCommand("Settings...", "import tcollection.menu as _tm; _tm.show_settings()")
     menu_obj.addCommand("About TCollection", "import tcollection.menu as _tm; _tm._show_about()")
     _MENU_REGISTERED = True

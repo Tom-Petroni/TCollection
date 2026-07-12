@@ -58,6 +58,35 @@ def _resolve_python_path(entry: dict[str, Any]) -> Path:
     return (ROOT_DIR / rel_path).resolve()
 
 
+def _icon_candidates(entry: dict[str, Any]) -> list[Path]:
+    python_path = _resolve_python_path(entry)
+    key = str(entry.get("key", "")).strip()
+    label = str(entry.get("label", key)).strip() or key
+    class_name = str(entry.get("class_name", "")).strip()
+
+    names: list[str] = []
+    for candidate in (key, label, class_name):
+        if candidate and candidate not in names:
+            names.append(candidate)
+
+    candidates: list[Path] = []
+    for name in names:
+        candidates.append(python_path / key / "resources" / f"{name}.png")
+        candidates.append(python_path / "resources" / f"{name}.png")
+    return candidates
+
+
+def resolve_node_icon_path(node_key: str) -> str:
+    entry = get_node(node_key)
+    if entry is None:
+        return ""
+
+    for candidate in _icon_candidates(entry):
+        if candidate.is_file():
+            return _normalized(str(candidate))
+    return ""
+
+
 def _ensure_python_path(path: Path) -> None:
     norm = _normalized(str(path))
     for existing in sys.path:
@@ -117,4 +146,3 @@ def bootstrap_status(status: str) -> None:
         node_key = str(entry.get("key", "")).strip()
         if node_key:
             bootstrap_node(node_key)
-
