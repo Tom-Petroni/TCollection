@@ -1,7 +1,11 @@
-"""Single-page Qt settings dialog for TCollection."""
+"""TCollection settings dialog with a portfolio-inspired web UI."""
 
 from __future__ import annotations
 
+import base64
+import html
+import json
+import mimetypes
 from pathlib import Path
 from typing import Any
 
@@ -12,34 +16,89 @@ from .updater import check_for_updates, get_install_state, prepare_update_for_ne
 
 try:  # pragma: no cover - depends on the Nuke runtime
     from PySide2 import QtCore, QtGui, QtWidgets  # type: ignore[import-not-found]
+
+    _QT_API = "PySide2"
 except Exception:  # pragma: no cover - fallback for newer runtimes
     from PySide6 import QtCore, QtGui, QtWidgets  # type: ignore[import-not-found]
+
+    _QT_API = "PySide6"
+
+try:  # pragma: no cover - optional dependency in Nuke
+    if _QT_API == "PySide2":
+        from PySide2.QtWebChannel import QWebChannel  # type: ignore[import-not-found]
+        from PySide2.QtWebEngineWidgets import QWebEngineView  # type: ignore[import-not-found]
+    else:
+        from PySide6.QtWebChannel import QWebChannel  # type: ignore[import-not-found]
+        from PySide6.QtWebEngineWidgets import QWebEngineView  # type: ignore[import-not-found]
+
+    _HAS_WEB_ENGINE = True
+except Exception:  # pragma: no cover - widget fallback is used instead
+    QWebChannel = None  # type: ignore[assignment]
+    QWebEngineView = None  # type: ignore[assignment]
+    _HAS_WEB_ENGINE = False
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 _SETTINGS_DIALOG: "TCollectionSettingsDialog | None" = None
 
 
-def _status_style(status: str) -> tuple[str, str]:
-    normalized = status.strip().lower()
+def _normalize_status(status: str) -> str:
+    value = status.strip().lower()
+    return value or "unknown"
+
+
+def _status_meta(status: str) -> dict[str, str]:
+    normalized = _normalize_status(status)
     if normalized == "stable":
-        return "#1f3a27", "#9ce2b0"
+        return {
+            "key": normalized,
+            "label": "Stable",
+            "accent": "#9ce2b0",
+            "surface": "#1f3a27",
+            "border": "rgba(156, 226, 176, 0.22)",
+        }
     if normalized == "test":
-        return "#47371d", "#f4d18f"
+        return {
+            "key": normalized,
+            "label": "Test",
+            "accent": "#f4d18f",
+            "surface": "#47371d",
+            "border": "rgba(244, 209, 143, 0.22)",
+        }
     if normalized == "hold":
-        return "#3b2d42", "#dfbbe6"
-    return "#25303c", "#bdc6cf"
+        return {
+            "key": normalized,
+            "label": "Hold",
+            "accent": "#dfbbe6",
+            "surface": "#3b2d42",
+            "border": "rgba(223, 187, 230, 0.22)",
+        }
+    if normalized == "package":
+        return {
+            "key": normalized,
+            "label": "Package",
+            "accent": "#a8c7fa",
+            "surface": "#243347",
+            "border": "rgba(168, 199, 250, 0.22)",
+        }
+    return {
+        "key": normalized,
+        "label": normalized.title(),
+        "accent": "#bdc6cf",
+        "surface": "#25303c",
+        "border": "rgba(189, 198, 207, 0.22)",
+    }
 
 
-def _clear_layout(layout: QtWidgets.QLayout) -> None:
-    while layout.count():
-        item = layout.takeAt(0)
-        widget = item.widget()
-        child_layout = item.layout()
-        if widget is not None:
-            widget.deleteLater()
-        elif child_layout is not None:
-            _clear_layout(child_layout)
+def _status_sort_value(status: str) -> int:
+    normalized = _normalize_status(status)
+    if normalized == "stable":
+        return 0
+    if normalized == "test":
+        return 1
+    if normalized == "hold":
+        return 2
+    return 3
 
 
 def _iter_runtime_files(root_name: str) -> list[Path]:
@@ -57,706 +116,538 @@ def _iter_runtime_files(root_name: str) -> list[Path]:
     return files
 
 
-class AssetCardWidget(QtWidgets.QFrame):
-    """Card used for nodes, gizmos, and scripts."""
+def _asset_initials(name: str) -> str:
+    tokens = [character for character in name if character.isalnum()]
+    if not tokens:
+        return "TC"
+    return "".join(tokens[:2]).upper()
 
-    def __init__(
-        self,
-        title: str,
-        subtitle: str,
-        badge_text: str,
-        notes: str = "",
-        icon_path: str = "",
-        badge_status: str = "",
-    ) -> None:
-        super().__init__()
-        self.setObjectName("AssetCard")
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 16)
-        layout.setSpacing(14)
+def _path_to_data_url(path_str: str) -> str:
+    if not path_str:
+        return ""
 
-        icon_holder = QtWidgets.QLabel()
-        icon_holder.setFixedSize(44, 44)
-        icon_holder.setAlignment(QtCore.Qt.AlignCenter)
-        icon_holder.setObjectName("AssetIcon")
+    path = Path(path_str)
+    if not path.is_file():
+        return ""
 
-        if icon_path:
-            pixmap = QtGui.QPixmap(icon_path)
-            if not pixmap.isNull():
-                icon_holder.setPixmap(
-                    pixmap.scaled(
-                        22,
-                        22,
-                        QtCore.Qt.KeepAspectRatio,
-                        QtCore.Qt.SmoothTransformation,
-                    )
-                )
-        else:
-            icon_holder.setText((title or "?")[:1].upper())
+    mime_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    try:
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+    return f"data:{mime_type};base64,{encoded}"
 
-        layout.addWidget(icon_holder, 0, QtCore.Qt.AlignTop)
 
-        content = QtWidgets.QVBoxLayout()
-        content.setSpacing(4)
+def _safe_url(url: str) -> str:
+    value = url.strip()
+    if value.startswith("https://") or value.startswith("http://"):
+        return value
+    return ""
 
-        header = QtWidgets.QHBoxLayout()
-        header.setSpacing(8)
 
-        title_label = QtWidgets.QLabel(title)
-        title_label.setObjectName("AssetTitle")
-        header.addWidget(title_label)
+class TCollectionBridge(QtCore.QObject):
+    """Qt bridge exposed to the embedded web page."""
 
-        badge = QtWidgets.QLabel(badge_text)
-        badge.setObjectName("AssetBadge")
-        if badge_status:
-            badge_bg, badge_fg = _status_style(badge_status)
-            badge.setStyleSheet(
-                f"background: {badge_bg}; color: {badge_fg}; border: 1px solid transparent;"
-            )
-        header.addWidget(badge, 0, QtCore.Qt.AlignVCenter)
-        header.addStretch(1)
-        content.addLayout(header)
+    def __init__(self, dialog: "TCollectionSettingsDialog") -> None:
+        super().__init__(dialog)
+        self._dialog = dialog
 
-        subtitle_label = QtWidgets.QLabel(subtitle)
-        subtitle_label.setObjectName("AssetSubtitle")
-        content.addWidget(subtitle_label)
+    @QtCore.Slot(result=str)
+    def getState(self) -> str:
+        return self._dialog._state_json()
 
-        if notes:
-            notes_label = QtWidgets.QLabel(notes)
-            notes_label.setObjectName("AssetNotes")
-            notes_label.setWordWrap(True)
-            content.addWidget(notes_label)
+    @QtCore.Slot(result=str)
+    def checkUpdates(self) -> str:
+        self._dialog._run_update_check()
+        return self._dialog._state_json()
 
-        layout.addLayout(content, 1)
+    @QtCore.Slot(result=str)
+    def installUpdate(self) -> str:
+        self._dialog._run_update_prepare()
+        return self._dialog._state_json()
+
+    @QtCore.Slot(result=str)
+    def openReleaseNotes(self) -> str:
+        self._dialog._open_release_notes()
+        return self._dialog._state_json()
+
+    @QtCore.Slot(str, result=bool)
+    def openExternalUrl(self, url: str) -> bool:
+        return self._dialog._open_external_url(url)
+
+    @QtCore.Slot()
+    def closeWindow(self) -> None:
+        self._dialog.close()
 
 
 class TCollectionSettingsDialog(QtWidgets.QDialog):
-    """Single scrollable settings page inspired by the portfolio layout."""
+    """Collection settings dialog."""
 
     def __init__(self) -> None:
         super().__init__()
         self._update_result: dict[str, Any] | None = None
-        self._fade_animation: QtCore.QPropertyAnimation | None = None
+        self._banner_message = ""
+        self._banner_tone = "info"
+        self._web_view: Any = None
+        self._text_view: Any = None
+        self._check_button: Any = None
+        self._prepare_button: Any = None
+        self._notes_button: Any = None
+        self._summary_label: Any = None
+
         self.setWindowTitle("TCollection Settings")
         self.setObjectName("TCollectionSettingsDialog")
-        self.setMinimumSize(1040, 820)
+        self.setMinimumSize(1120, 860)
         self.setModal(False)
-        self._build_ui()
-        self.refresh_all()
-        self._animate_in()
 
-    def _build_ui(self) -> None:
+        if _HAS_WEB_ENGINE:
+            self._build_web_ui()
+        else:
+            self._build_widget_fallback()
+
+        self.refresh_all()
+
+    def _build_web_ui(self) -> None:
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.setStyleSheet("QDialog#TCollectionSettingsDialog { background: #131314; }")
+
+        self._web_view = QWebEngineView(self)
+        try:
+            self._web_view.page().setBackgroundColor(QtGui.QColor("#131314"))
+        except Exception:
+            pass
+
+        channel = QWebChannel(self._web_view.page())
+        bridge = TCollectionBridge(self)
+        channel.registerObject("tcollectionBridge", bridge)
+        self._web_view.page().setWebChannel(channel)
+
+        self._web_channel = channel
+        self._web_bridge = bridge
+        layout.addWidget(self._web_view)
+
+    def _build_widget_fallback(self) -> None:
         self.setStyleSheet(
             """
             QDialog#TCollectionSettingsDialog {
                 background: #0a0a0a;
                 color: #f5f5f5;
-                font-family: "DM Sans", "Manrope", "Segoe UI", sans-serif;
+                font-family: "DM Sans", "Segoe UI", sans-serif;
             }
-            QScrollArea {
-                border: none;
-                background: transparent;
-            }
-            QWidget#ScrollContent {
-                background: transparent;
-            }
-            QFrame#FloatingBar {
-                background: rgba(18, 18, 18, 0.88);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 26px;
-            }
-            QFrame#HeroCard, QFrame#PanelCard, QFrame#AssetCard, QFrame#StatCard {
-                background: rgba(18, 18, 18, 0.82);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-            }
-            QFrame#HeroCard, QFrame#PanelCard {
-                border-radius: 30px;
-            }
-            QFrame#AssetCard {
-                border-radius: 22px;
-            }
-            QFrame#StatCard {
-                border-radius: 22px;
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.07);
-            }
-            QLabel#FloatingText {
-                font-size: 12px;
-                font-weight: 500;
-                color: #e6e6e6;
-                letter-spacing: 0.04em;
-            }
-            QLabel#VersionPill {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 13px;
-                color: #bbbbbb;
-                font-size: 11px;
-                font-family: Consolas, "SFMono-Regular", monospace;
-                padding: 5px 9px;
-            }
-            QLabel#HeroKicker {
-                font-size: 11px;
-                font-weight: 500;
-                letter-spacing: 0.22em;
-                text-transform: uppercase;
-                color: #7d7d7d;
-            }
-            QLabel#HeroTitle {
+            QLabel#Title {
                 font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 42px;
+                font-size: 34px;
                 font-weight: 600;
                 color: #ffffff;
             }
-            QLabel#HeroBody {
-                font-size: 14px;
-                line-height: 1.7;
-                color: #b6b6b6;
-            }
-            QLabel#HeroPill {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 14px;
-                color: #ededed;
-                font-size: 11px;
-                font-weight: 600;
-                padding: 6px 12px;
-            }
-            QLabel#SectionTitle {
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 28px;
-                font-weight: 600;
-                color: #ffffff;
-            }
-            QLabel#SectionBody {
+            QLabel#Body {
+                color: #c4c7c5;
                 font-size: 13px;
-                line-height: 1.7;
-                color: #afafaf;
-            }
-            QLabel#StatKicker {
-                font-size: 10px;
-                font-weight: 600;
-                letter-spacing: 0.18em;
-                text-transform: uppercase;
-                color: #6f6f6f;
-            }
-            QLabel#StatValue {
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 22px;
-                font-weight: 600;
-                color: #f7f7f7;
-            }
-            QLabel#StatNote {
-                font-size: 12px;
-                color: #9a9a9a;
-            }
-            QLabel#InfoLabel {
-                font-size: 11px;
-                font-weight: 600;
-                letter-spacing: 0.15em;
-                text-transform: uppercase;
-                color: #6f6f6f;
-            }
-            QLabel#InfoValue {
-                font-size: 13px;
-                color: #ececec;
-            }
-            QLabel#AssetTitle {
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 18px;
-                font-weight: 600;
-                color: #ffffff;
-            }
-            QLabel#AssetSubtitle {
-                font-size: 12px;
-                color: #a0a0a0;
-            }
-            QLabel#AssetNotes {
-                font-size: 12px;
                 line-height: 1.6;
-                color: #7f7f7f;
             }
-            QLabel#AssetBadge {
-                background: rgba(255, 255, 255, 0.04);
+            QTextBrowser {
+                background: #1e1f20;
                 border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 11px;
-                color: #bdbdbd;
-                font-size: 10px;
-                font-family: Consolas, "SFMono-Regular", monospace;
-                padding: 4px 8px;
-            }
-            QLabel#AssetIcon {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.07);
-                border-radius: 22px;
-                color: #d9d9d9;
-                font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-                font-size: 13px;
-                font-weight: 700;
-            }
-            QLabel#EmptyState {
-                font-size: 13px;
-                color: #8c8c8c;
-                padding: 4px 0;
+                border-radius: 28px;
+                color: #e3e3e3;
+                padding: 10px;
             }
             QPushButton {
-                background: rgba(255, 255, 255, 0.05);
-                color: #f2f2f2;
-                border: 1px solid rgba(255, 255, 255, 0.09);
+                background: #282a2c;
+                color: #e3e3e3;
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 18px;
-                padding: 11px 18px;
+                padding: 10px 16px;
                 font-size: 12px;
-                font-weight: 500;
+            }
+            QPushButton#Primary {
+                background: #a8c7fa;
+                color: #131314;
+                border-color: transparent;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background: rgba(255, 255, 255, 0.09);
+                background: #333537;
             }
-            QPushButton:disabled {
-                color: #6f6f6f;
-                border-color: rgba(255, 255, 255, 0.05);
-                background: rgba(255, 255, 255, 0.02);
-            }
-            QPushButton#PrimaryButton {
-                background: rgba(255, 255, 255, 0.9);
-                color: #0a0a0a;
-                border: 1px solid rgba(255, 255, 255, 0.9);
-            }
-            QPushButton#PrimaryButton:hover {
-                background: #ffffff;
-            }
-            QScrollBar:vertical {
-                background: transparent;
-                width: 10px;
-                margin: 8px 0 8px 0;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 0.14);
-                border-radius: 5px;
-                min-height: 30px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
+            QPushButton#Primary:hover {
+                background: #d3e3fd;
             }
             """
         )
 
-        self.resize(1140, 860)
-        self.setFont(QtGui.QFont("DM Sans", 10))
-
         outer = QtWidgets.QVBoxLayout(self)
-        outer.setContentsMargins(22, 22, 22, 22)
+        outer.setContentsMargins(28, 28, 28, 28)
         outer.setSpacing(18)
 
-        floating_bar = QtWidgets.QFrame()
-        floating_bar.setObjectName("FloatingBar")
-        floating_layout = QtWidgets.QHBoxLayout(floating_bar)
-        floating_layout.setContentsMargins(18, 12, 18, 12)
-        floating_layout.setSpacing(12)
+        title = QtWidgets.QLabel("TCollection")
+        title.setObjectName("Title")
+        title.setAlignment(QtCore.Qt.AlignCenter)
+        outer.addWidget(title)
 
-        self._floating_label = QtWidgets.QLabel("Thomas Petroni / TCollection")
-        self._floating_label.setObjectName("FloatingText")
-        floating_layout.addWidget(self._floating_label)
+        self._summary_label = QtWidgets.QLabel("")
+        self._summary_label.setObjectName("Body")
+        self._summary_label.setWordWrap(True)
+        self._summary_label.setAlignment(QtCore.Qt.AlignCenter)
+        outer.addWidget(self._summary_label)
 
-        self._version_pill = QtWidgets.QLabel("v0.0.0")
-        self._version_pill.setObjectName("VersionPill")
-        floating_layout.addWidget(self._version_pill, 0, QtCore.Qt.AlignLeft)
-        floating_layout.addStretch(1)
+        buttons = QtWidgets.QHBoxLayout()
+        buttons.setSpacing(10)
+        buttons.addStretch(1)
 
-        close_button = QtWidgets.QPushButton("Close")
-        close_button.clicked.connect(self.close)
-        floating_layout.addWidget(close_button)
-        outer.addWidget(floating_bar)
+        self._check_button = QtWidgets.QPushButton("Check Updates")
+        self._check_button.setObjectName("Primary")
+        self._check_button.clicked.connect(self._run_update_check)
+        buttons.addWidget(self._check_button)
 
-        self._scroll = QtWidgets.QScrollArea()
-        self._scroll.setWidgetResizable(True)
-        self._scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        outer.addWidget(self._scroll, 1)
+        self._prepare_button = QtWidgets.QPushButton("Install for Next Launch")
+        self._prepare_button.clicked.connect(self._run_update_prepare)
+        buttons.addWidget(self._prepare_button)
 
-        scroll_content = QtWidgets.QWidget()
-        scroll_content.setObjectName("ScrollContent")
-        self._scroll.setWidget(scroll_content)
-
-        scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 0, 10)
-        scroll_layout.setSpacing(0)
-
-        center_wrapper = QtWidgets.QWidget()
-        center_layout = QtWidgets.QVBoxLayout(center_wrapper)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(18)
-        scroll_layout.addWidget(center_wrapper, 0, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop)
-
-        self._content_frame = QtWidgets.QFrame()
-        self._content_frame.setObjectName("ContentFrame")
-        self._content_frame.setMaximumWidth(980)
-        content_layout = QtWidgets.QVBoxLayout(self._content_frame)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(18)
-        center_layout.addWidget(self._content_frame)
-
-        self._hero_card = self._build_hero_card()
-        self._updates_card = self._build_updates_card()
-        self._assets_intro_card = self._build_assets_intro_card()
-        self._nodes_card, self._nodes_items_layout = self._build_asset_section_card(
-            "Nodes",
-            "Native nodes currently tracked by the collection package.",
-        )
-        self._gizmos_card, self._gizmos_items_layout = self._build_asset_section_card(
-            "Gizmos",
-            "Reusable gizmos shipped in the collection package.",
-        )
-        self._scripts_card, self._scripts_items_layout = self._build_asset_section_card(
-            "Scripts",
-            "Utility scripts available alongside the collection runtime.",
-        )
-
-        content_layout.addWidget(self._hero_card)
-        content_layout.addWidget(self._updates_card)
-        content_layout.addWidget(self._assets_intro_card)
-        content_layout.addWidget(self._nodes_card)
-        content_layout.addWidget(self._gizmos_card)
-        content_layout.addWidget(self._scripts_card)
-        content_layout.addStretch(1)
-
-    def _build_hero_card(self) -> QtWidgets.QFrame:
-        card = QtWidgets.QFrame()
-        card.setObjectName("HeroCard")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(30, 34, 30, 34)
-        layout.setSpacing(12)
-
-        self._hero_kicker = QtWidgets.QLabel("Collection manager")
-        self._hero_kicker.setObjectName("HeroKicker")
-        self._hero_kicker.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(self._hero_kicker)
-
-        self._hero_title = QtWidgets.QLabel("TCollection")
-        self._hero_title.setObjectName("HeroTitle")
-        self._hero_title.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(self._hero_title)
-
-        self._hero_body = QtWidgets.QLabel("")
-        self._hero_body.setObjectName("HeroBody")
-        self._hero_body.setAlignment(QtCore.Qt.AlignCenter)
-        self._hero_body.setWordWrap(True)
-        layout.addWidget(self._hero_body)
-
-        self._hero_pill = QtWidgets.QLabel("")
-        self._hero_pill.setObjectName("HeroPill")
-        self._hero_pill.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(self._hero_pill, 0, QtCore.Qt.AlignHCenter)
-        return card
-
-    def _build_updates_card(self) -> QtWidgets.QFrame:
-        card = QtWidgets.QFrame()
-        card.setObjectName("PanelCard")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(16)
-
-        title = QtWidgets.QLabel("Updates & Versions")
-        title.setObjectName("SectionTitle")
-        layout.addWidget(title)
-
-        body = QtWidgets.QLabel(
-            "Check the latest GitHub release, prepare the next install for the following Nuke launch, and keep an eye on the managed package state."
-        )
-        body.setObjectName("SectionBody")
-        body.setWordWrap(True)
-        layout.addWidget(body)
-
-        stats_row = QtWidgets.QHBoxLayout()
-        stats_row.setSpacing(14)
-        layout.addLayout(stats_row)
-
-        self._collection_version = self._build_stat_card("Collection Version", "Installed collection package.")
-        self._managed_version = self._build_stat_card("Managed Version", "Currently active managed version.")
-        self._pending_version = self._build_stat_card("Pending Version", "Will activate on next launch.")
-        self._latest_version = self._build_stat_card("Latest Release", "Last published GitHub release.")
-
-        stats_row.addWidget(self._collection_version["card"], 1)
-        stats_row.addWidget(self._managed_version["card"], 1)
-        stats_row.addWidget(self._pending_version["card"], 1)
-        stats_row.addWidget(self._latest_version["card"], 1)
-
-        info_form = QtWidgets.QFormLayout()
-        info_form.setContentsMargins(0, 6, 0, 0)
-        info_form.setSpacing(12)
-        self._update_summary = self._build_info_value(word_wrap=True)
-        self._update_channel = self._build_info_value()
-        self._release_link = self._build_info_value(word_wrap=True)
-        self._runtime_root = self._build_info_value(word_wrap=True)
-        info_form.addRow(self._build_info_label("Update State"), self._update_summary)
-        info_form.addRow(self._build_info_label("Channel"), self._update_channel)
-        info_form.addRow(self._build_info_label("Release Notes"), self._release_link)
-        info_form.addRow(self._build_info_label("Runtime Root"), self._runtime_root)
-        layout.addLayout(info_form)
-
-        buttons_row = QtWidgets.QHBoxLayout()
-        buttons_row.setSpacing(12)
-
-        self._check_button = QtWidgets.QPushButton("Check for Updates")
-        self._check_button.setObjectName("PrimaryButton")
-        self._check_button.clicked.connect(self._check_for_updates)
-        buttons_row.addWidget(self._check_button)
-
-        self._prepare_button = QtWidgets.QPushButton("Download for Next Launch")
-        self._prepare_button.setEnabled(False)
-        self._prepare_button.clicked.connect(self._prepare_update)
-        buttons_row.addWidget(self._prepare_button)
-
-        self._notes_button = QtWidgets.QPushButton("Open Release Notes")
-        self._notes_button.setEnabled(False)
+        self._notes_button = QtWidgets.QPushButton("Release Notes")
         self._notes_button.clicked.connect(self._open_release_notes)
-        buttons_row.addWidget(self._notes_button)
+        buttons.addWidget(self._notes_button)
 
-        buttons_row.addStretch(1)
-        layout.addLayout(buttons_row)
-        return card
+        buttons.addStretch(1)
+        outer.addLayout(buttons)
 
-    def _build_assets_intro_card(self) -> QtWidgets.QFrame:
-        card = QtWidgets.QFrame()
-        card.setObjectName("PanelCard")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(10)
+        self._text_view = QtWidgets.QTextBrowser()
+        self._text_view.setOpenExternalLinks(True)
+        outer.addWidget(self._text_view, 1)
 
-        title = QtWidgets.QLabel("Collection Contents")
-        title.setObjectName("SectionTitle")
-        layout.addWidget(title)
-
-        self._assets_intro = QtWidgets.QLabel("")
-        self._assets_intro.setObjectName("SectionBody")
-        self._assets_intro.setWordWrap(True)
-        layout.addWidget(self._assets_intro)
-        return card
-
-    def _build_asset_section_card(
-        self,
-        title_text: str,
-        body_text: str,
-    ) -> tuple[QtWidgets.QFrame, QtWidgets.QVBoxLayout]:
-        card = QtWidgets.QFrame()
-        card.setObjectName("PanelCard")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(14)
-
-        title = QtWidgets.QLabel(title_text)
-        title.setObjectName("SectionTitle")
-        layout.addWidget(title)
-
-        body = QtWidgets.QLabel(body_text)
-        body.setObjectName("SectionBody")
-        body.setWordWrap(True)
-        layout.addWidget(body)
-
-        items_widget = QtWidgets.QWidget()
-        items_layout = QtWidgets.QVBoxLayout(items_widget)
-        items_layout.setContentsMargins(0, 8, 0, 0)
-        items_layout.setSpacing(10)
-        layout.addWidget(items_widget)
-        return card, items_layout
-
-    def _build_stat_card(self, kicker: str, note: str) -> dict[str, Any]:
-        card = QtWidgets.QFrame()
-        card.setObjectName("StatCard")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(8)
-
-        kicker_label = QtWidgets.QLabel(kicker)
-        kicker_label.setObjectName("StatKicker")
-        value_label = QtWidgets.QLabel("")
-        value_label.setObjectName("StatValue")
-        note_label = QtWidgets.QLabel(note)
-        note_label.setObjectName("StatNote")
-        note_label.setWordWrap(True)
-
-        layout.addWidget(kicker_label)
-        layout.addWidget(value_label)
-        layout.addWidget(note_label)
-        layout.addStretch(1)
-
-        return {"card": card, "value": value_label}
-
-    def _build_info_label(self, text: str) -> QtWidgets.QLabel:
-        label = QtWidgets.QLabel(text)
-        label.setObjectName("InfoLabel")
-        return label
-
-    def _build_info_value(self, word_wrap: bool = False) -> QtWidgets.QLabel:
-        label = QtWidgets.QLabel("")
-        label.setObjectName("InfoValue")
-        label.setWordWrap(word_wrap)
-        label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
-        return label
-
-    def _animate_in(self) -> None:
-        effect = QtWidgets.QGraphicsOpacityEffect(self._content_frame)
-        self._content_frame.setGraphicsEffect(effect)
-        self._fade_animation = QtCore.QPropertyAnimation(effect, b"opacity", self)
-        self._fade_animation.setDuration(260)
-        self._fade_animation.setStartValue(0.0)
-        self._fade_animation.setEndValue(1.0)
-        self._fade_animation.setEasingCurve(QtCore.QEasingCurve.OutCubic)
-        self._fade_animation.start()
-
-    def refresh_all(self) -> None:
-        self._refresh_collection_state()
-        self._refresh_asset_lists()
-        self._refresh_update_summary()
-
-    def _refresh_collection_state(self) -> None:
-        info = get_collection_info()
-        state = get_install_state()
-        version = str(info.get("version", "unknown"))
-        nodes = [entry for entry in get_nodes() if str(entry.get("class_name", "")).strip()]
-        gizmo_files = _iter_runtime_files("gizmos")
-        script_files = _iter_runtime_files("scripts")
-
-        self._version_pill.setText(f"v{version}")
-        self._hero_title.setText(str(info.get("display_name", "TCollection")))
-        self._hero_body.setText(
-            "A single place inside Nuke to track the collection version, prepare updates, and browse the current package contents."
-        )
-        self._hero_pill.setText("Single-page collection settings inspired by your portfolio layout")
-
-        self._collection_version["value"].setText(version)
-        self._managed_version["value"].setText(state.get("current_version", "") or "Not installed")
-        self._pending_version["value"].setText(state.get("pending_version", "") or "None")
-        self._runtime_root.setText(state.get("runtime_root", ""))
-
-        self._assets_intro.setText(
-            f"The current package exposes {len(nodes)} nodes, {len(gizmo_files)} gizmo files, and {len(script_files)} script files."
-        )
-
-    def _refresh_asset_lists(self) -> None:
-        self._populate_nodes()
-        self._populate_gizmos()
-        self._populate_scripts()
-
-    def _populate_nodes(self) -> None:
-        _clear_layout(self._nodes_items_layout)
+    def _build_node_assets(self) -> list[dict[str, Any]]:
+        node_assets: list[dict[str, Any]] = []
         nodes = sorted(
             [entry for entry in get_nodes() if str(entry.get("class_name", "")).strip()],
-            key=lambda entry: str(entry.get("label", entry.get("key", ""))).lower(),
+            key=lambda entry: (
+                _status_sort_value(str(entry.get("status", ""))),
+                str(entry.get("label", entry.get("key", ""))).lower(),
+            ),
         )
-
-        if not nodes:
-            empty = QtWidgets.QLabel("No node entries are currently available in the collection.")
-            empty.setObjectName("EmptyState")
-            self._nodes_items_layout.addWidget(empty)
-            return
 
         for entry in nodes:
             node_key = str(entry.get("key", "")).strip()
             label = str(entry.get("label", node_key)).strip() or node_key
-            version = str(entry.get("version", "")).strip()
-            status = str(entry.get("status", "")).strip() or "unknown"
-            subtitle = str(entry.get("class_name", "")).strip() or "Node runtime"
-            notes = str(entry.get("notes", "")).strip()
-            icon_path = resolve_node_icon_path(node_key)
-            card = AssetCardWidget(
-                title=label,
-                subtitle=subtitle,
-                badge_text=version,
-                notes=notes,
-                icon_path=icon_path,
-                badge_status=status,
+            status_meta = _status_meta(str(entry.get("status", "")))
+            source = entry.get("source", {})
+            if not isinstance(source, dict):
+                source = {}
+
+            node_assets.append(
+                {
+                    "id": f"node:{node_key}",
+                    "title": label,
+                    "kind": "Node",
+                    "version": str(entry.get("version", "")).strip() or "n/a",
+                    "status": status_meta["key"],
+                    "status_label": status_meta["label"],
+                    "status_accent": status_meta["accent"],
+                    "status_surface": status_meta["surface"],
+                    "status_border": status_meta["border"],
+                    "subtitle": str(entry.get("class_name", "")).strip() or "Node runtime",
+                    "notes": str(entry.get("notes", "")).strip() or "No extra notes yet.",
+                    "initials": _asset_initials(label),
+                    "icon_data_url": _path_to_data_url(resolve_node_icon_path(node_key)),
+                    "relative_path": str(entry.get("python_path", "")).strip(),
+                    "repo_url": _safe_url(str(source.get("repo_url", "")).strip()),
+                    "releases_url": _safe_url(str(source.get("releases_url", "")).strip()),
+                    "source_repo": str(source.get("repo", "")).strip(),
+                }
             )
-            self._nodes_items_layout.addWidget(card)
 
-        self._nodes_items_layout.addStretch(1)
+        return node_assets
 
-    def _populate_gizmos(self) -> None:
-        _clear_layout(self._gizmos_items_layout)
-        gizmo_files = _iter_runtime_files("gizmos")
-        if not gizmo_files:
-            empty = QtWidgets.QLabel("No gizmos are packaged in the current stable collection yet.")
-            empty.setObjectName("EmptyState")
-            self._gizmos_items_layout.addWidget(empty)
-            return
-
-        for path in gizmo_files:
-            relative = path.relative_to(ROOT_DIR)
-            card = AssetCardWidget(
-                title=path.stem,
-                subtitle="Gizmo package asset",
-                badge_text=path.suffix.lower().lstrip(".") or "file",
-                notes=str(relative).replace("\\", "/"),
-                badge_status="hold",
+    def _build_runtime_assets(self, root_name: str, kind: str) -> list[dict[str, Any]]:
+        assets: list[dict[str, Any]] = []
+        for path in _iter_runtime_files(root_name):
+            status_meta = _status_meta("package")
+            assets.append(
+                {
+                    "id": f"{kind.lower()}:{path.relative_to(ROOT_DIR).as_posix()}",
+                    "title": path.stem,
+                    "kind": kind,
+                    "version": path.suffix.lower().lstrip(".") or "file",
+                    "status": status_meta["key"],
+                    "status_label": status_meta["label"],
+                    "status_accent": status_meta["accent"],
+                    "status_surface": status_meta["surface"],
+                    "status_border": status_meta["border"],
+                    "subtitle": f"{kind} asset",
+                    "notes": path.relative_to(ROOT_DIR).as_posix(),
+                    "initials": _asset_initials(path.stem),
+                    "icon_data_url": "",
+                    "relative_path": path.relative_to(ROOT_DIR).as_posix(),
+                    "repo_url": "",
+                    "releases_url": "",
+                    "source_repo": "",
+                }
             )
-            self._gizmos_items_layout.addWidget(card)
+        return assets
 
-        self._gizmos_items_layout.addStretch(1)
+    def _build_sections(self) -> list[dict[str, Any]]:
+        nodes = self._build_node_assets()
+        gizmos = self._build_runtime_assets("gizmos", "Gizmo")
+        scripts = self._build_runtime_assets("scripts", "Script")
 
-    def _populate_scripts(self) -> None:
-        _clear_layout(self._scripts_items_layout)
-        script_files = _iter_runtime_files("scripts")
-        if not script_files:
-            empty = QtWidgets.QLabel("No scripts are packaged in the current stable collection yet.")
-            empty.setObjectName("EmptyState")
-            self._scripts_items_layout.addWidget(empty)
-            return
+        return [
+            {
+                "title": "Nodes",
+                "description": "Production nodes currently tracked by the collection package.",
+                "items": nodes,
+            },
+            {
+                "title": "Gizmos",
+                "description": "Reusable gizmos shipped with the current install.",
+                "items": gizmos,
+            },
+            {
+                "title": "Scripts",
+                "description": "Utility scripts available alongside the collection runtime.",
+                "items": scripts,
+            },
+        ]
 
-        for path in script_files:
-            relative = path.relative_to(ROOT_DIR)
-            card = AssetCardWidget(
-                title=path.stem,
-                subtitle="Script package asset",
-                badge_text=path.suffix.lower().lstrip(".") or "file",
-                notes=str(relative).replace("\\", "/"),
-                badge_status="test",
-            )
-            self._scripts_items_layout.addWidget(card)
-
-        self._scripts_items_layout.addStretch(1)
-
-    def _refresh_update_summary(self) -> None:
+    def _build_state(self) -> dict[str, Any]:
         info = get_collection_info()
-        current_collection_version = str(info.get("version", "unknown")).strip()
+        install_state = get_install_state()
+        sections = self._build_sections()
+
+        current_version = str(info.get("version", "unknown")).strip()
+        managed_version = install_state.get("current_version", "") or current_version
+        pending_version = install_state.get("pending_version", "")
+        links = info.get("links", {})
+        if not isinstance(links, dict):
+            links = {}
 
         if self._update_result is None:
-            self._latest_version["value"].setText("Not checked")
-            self._update_summary.setText(
-                "No remote release has been checked yet. Use the button below to compare this install with the latest GitHub release."
+            latest_version = current_version
+            update_available = False
+            update_summary = (
+                "No remote release has been checked yet. Compare this install against the latest GitHub release whenever you want."
             )
-            self._update_channel.setText("stable")
-            self._release_link.setText("No release notes loaded.")
-            self._prepare_button.setEnabled(False)
-            self._notes_button.setEnabled(False)
+            notes_url = _safe_url(str(links.get("releases_url", "")).strip())
+            channel = "stable"
+        else:
+            update_available = bool(self._update_result.get("available", False))
+            latest_version = (
+                str(self._update_result.get("latest_version", "")).strip() or current_version
+            )
+            notes_url = _safe_url(str(self._update_result.get("notes_url", "")).strip())
+            channel = str(self._update_result.get("channel", "")).strip() or "stable"
+            reason = str(self._update_result.get("reason", "")).strip()
+            if update_available:
+                update_summary = (
+                    f"TCollection {latest_version} is available. You are currently on {managed_version}. {reason}"
+                )
+            else:
+                update_summary = (
+                    f"TCollection {managed_version} already matches the latest published release. {reason}"
+                )
+
+        if pending_version:
+            update_summary = (
+                f"TCollection {pending_version} has already been prepared for the next Nuke launch. Restart Nuke to activate it."
+            )
+
+        node_count = len(sections[0]["items"])
+        gizmo_count = len(sections[1]["items"])
+        script_count = len(sections[2]["items"])
+
+        install_enabled = update_available and (pending_version != latest_version)
+        install_label = "Install for Next Launch"
+        if pending_version and pending_version == latest_version:
+            install_label = "Ready on Next Launch"
+        elif update_available:
+            install_label = f"Install {latest_version}"
+
+        return {
+            "collection": {
+                "display_name": str(info.get("display_name", "TCollection")).strip() or "TCollection",
+                "version": current_version,
+                "status": str(info.get("status", "")).strip() or "planning",
+                "repo_url": _safe_url(str(links.get("repo_url", "")).strip()),
+                "releases_url": _safe_url(str(links.get("releases_url", "")).strip()),
+            },
+            "header": {
+                "kicker": "Collection manager",
+                "subtitle": "Developed by Thomas Petroni",
+                "description": (
+                    "A single place inside Nuke to track versions, prepare updates, and browse the current collection contents."
+                ),
+                "hero_pill": "Portfolio-inspired collection settings",
+            },
+            "updates": {
+                "summary": update_summary,
+                "channel": channel,
+                "latest_version": latest_version,
+                "managed_version": managed_version,
+                "pending_version": pending_version or "None",
+                "runtime_root": install_state.get("runtime_root", ""),
+                "managed_root": install_state.get("managed_root", ""),
+                "versions_root": install_state.get("versions_root", ""),
+                "update_available": update_available,
+                "install_enabled": install_enabled,
+                "install_label": install_label,
+                "notes_url": notes_url,
+            },
+            "stats": [
+                {
+                    "label": "Collection Version",
+                    "value": current_version,
+                    "note": "Package currently loaded in Nuke.",
+                },
+                {
+                    "label": "Managed Version",
+                    "value": managed_version,
+                    "note": "Active version tracked in the managed install root.",
+                },
+                {
+                    "label": "Pending Version",
+                    "value": pending_version or "None",
+                    "note": "Version that activates after a Nuke restart.",
+                },
+                {
+                    "label": "Latest Release",
+                    "value": latest_version,
+                    "note": "Most recent GitHub release seen by the updater.",
+                },
+                {
+                    "label": "Nodes",
+                    "value": str(node_count),
+                    "note": "Node entries listed in the collection manifest.",
+                },
+                {
+                    "label": "Gizmos",
+                    "value": str(gizmo_count),
+                    "note": "Standalone gizmo files currently packaged.",
+                },
+                {
+                    "label": "Scripts",
+                    "value": str(script_count),
+                    "note": "Utility scripts currently packaged.",
+                },
+            ],
+            "sections": sections,
+            "banner": {
+                "message": self._banner_message,
+                "tone": self._banner_tone,
+            },
+            "web_engine": _HAS_WEB_ENGINE,
+        }
+
+    def _state_json(self) -> str:
+        return json.dumps(self._build_state(), ensure_ascii=False).replace("</", "<\\/")
+
+    def _render_web_ui(self) -> None:
+        if self._web_view is None:
             return
 
-        available = bool(self._update_result.get("available", False))
-        latest_version = str(self._update_result.get("latest_version", "")).strip() or current_collection_version
-        current_version = str(self._update_result.get("current_version", "")).strip() or current_collection_version
-        reason = str(self._update_result.get("reason", "")).strip()
-        channel = str(self._update_result.get("channel", "")).strip() or "stable"
-        notes_url = str(self._update_result.get("notes_url", "")).strip()
+        html_text = self._html_template().replace("__TCOLLECTION_STATE__", self._state_json())
+        base_url = QtCore.QUrl.fromLocalFile(str(ROOT_DIR).replace("\\", "/") + "/")
+        self._web_view.setHtml(html_text, base_url)
 
-        self._latest_version["value"].setText(latest_version)
-        self._update_channel.setText(channel)
-        self._release_link.setText(notes_url or "No release notes URL available.")
+    def _render_widget_fallback(self) -> None:
+        if self._text_view is None or self._summary_label is None:
+            return
 
-        if available:
-            self._update_summary.setText(
-                f"TCollection {latest_version} is available. You are currently on {current_version}. {reason}"
+        state = self._build_state()
+        updates = state["updates"]
+        banner = state["banner"]
+
+        summary = updates["summary"]
+        if banner["message"]:
+            summary = f"{banner['message']}\n\n{summary}"
+        self._summary_label.setText(summary)
+
+        self._prepare_button.setEnabled(bool(updates["install_enabled"]))
+        self._notes_button.setEnabled(bool(updates["notes_url"]))
+
+        sections_html: list[str] = []
+        for section in state["sections"]:
+            items = section["items"]
+            items_html = ""
+            if not items:
+                items_html = "<p style='color:#9aa0a6;'>Nothing packaged in this section yet.</p>"
+            else:
+                parts = []
+                for item in items:
+                    links: list[str] = []
+                    if item["repo_url"]:
+                        links.append(f"<a href='{html.escape(item['repo_url'])}'>Repository</a>")
+                    if item["releases_url"]:
+                        links.append(f"<a href='{html.escape(item['releases_url'])}'>Releases</a>")
+                    links_html = " · ".join(links)
+                    if links_html:
+                        links_html = f"<div style='margin-top:6px;color:#a8c7fa;'>{links_html}</div>"
+
+                    parts.append(
+                        "<div style='padding:16px 18px;margin-top:12px;background:#282a2c;"
+                        "border:1px solid rgba(255,255,255,0.08);border-radius:22px;'>"
+                        f"<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start;'>"
+                        f"<div><div style='font-size:17px;color:#ffffff;font-weight:600;'>{html.escape(item['title'])}</div>"
+                        f"<div style='margin-top:4px;color:#c4c7c5;font-size:12px;'>{html.escape(item['subtitle'])}</div>"
+                        f"<div style='margin-top:8px;color:#9aa0a6;font-size:12px;line-height:1.6;'>{html.escape(item['notes'])}</div>"
+                        f"{links_html}</div>"
+                        f"<div style='white-space:nowrap;color:{item['status_accent']};font-size:12px;'>{html.escape(item['version'])}</div>"
+                        "</div></div>"
+                    )
+                items_html = "".join(parts)
+
+            sections_html.append(
+                "<section style='margin-top:28px;'>"
+                f"<h2 style='font-family:Manrope,Segoe UI,sans-serif;font-size:24px;color:#ffffff;'>{html.escape(section['title'])}</h2>"
+                f"<p style='color:#c4c7c5;font-size:13px;line-height:1.6;'>{html.escape(section['description'])}</p>"
+                f"{items_html}</section>"
             )
+
+        banner_html = ""
+        if banner["message"]:
+            tone_bg = "#243347" if banner["tone"] != "error" else "#4a2326"
+            tone_fg = "#a8c7fa" if banner["tone"] != "error" else "#f2b8b5"
+            banner_html = (
+                f"<div style='margin-bottom:18px;padding:14px 18px;border-radius:18px;background:{tone_bg};"
+                f"color:{tone_fg};font-size:13px;'>{html.escape(banner['message'])}</div>"
+            )
+
+        html_output = (
+            "<html><body style='background:#131314;color:#e3e3e3;font-family:DM Sans,Segoe UI,sans-serif;"
+            "padding:22px;line-height:1.6;'>"
+            f"{banner_html}"
+            "<h2 style='font-family:Manrope,Segoe UI,sans-serif;font-size:28px;color:#ffffff;margin:0 0 8px;'>Updates</h2>"
+            f"<p style='color:#c4c7c5;font-size:13px;'>{html.escape(updates['summary'])}</p>"
+            "<ul style='color:#9aa0a6;font-size:12px;'>"
+            f"<li>Channel: {html.escape(updates['channel'])}</li>"
+            f"<li>Runtime root: {html.escape(updates['runtime_root'])}</li>"
+            f"<li>Managed root: {html.escape(updates['managed_root'])}</li>"
+            f"<li>Versions root: {html.escape(updates['versions_root'])}</li>"
+            "</ul>"
+            + "".join(sections_html)
+            + "</body></html>"
+        )
+        self._text_view.setHtml(html_output)
+
+    def refresh_all(self) -> None:
+        if self._web_view is not None:
+            self._render_web_ui()
         else:
-            self._update_summary.setText(
-                f"TCollection {current_version} already matches the latest published release. {reason}"
-            )
+            self._render_widget_fallback()
 
-        self._prepare_button.setEnabled(available)
-        self._notes_button.setEnabled(bool(notes_url))
-
-    def _check_for_updates(self) -> None:
-        self._check_button.setEnabled(False)
+    def _run_update_check(self) -> None:
         try:
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self._update_result = check_for_updates()
+            current_version = str(get_collection_info().get("version", "unknown")).strip()
+            latest_version = str(self._update_result.get("latest_version", "")).strip() or current_version
+            if bool(self._update_result.get("available", False)):
+                self._banner_message = (
+                    f"Update found: TCollection {current_version} -> {latest_version}."
+                )
+            else:
+                self._banner_message = f"TCollection {latest_version} is already up to date."
+            self._banner_tone = "info"
         except Exception as exc:
             current_version = str(get_collection_info().get("version", "unknown")).strip()
             self._update_result = {
@@ -767,41 +658,1126 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 "reason": f"Failed to check updates: {exc}",
                 "notes_url": "",
             }
+            self._banner_message = f"Update check failed: {exc}"
+            self._banner_tone = "error"
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
-            self._check_button.setEnabled(True)
 
-        self._refresh_update_summary()
+        self.refresh_all()
 
-    def _prepare_update(self) -> None:
+    def _run_update_prepare(self) -> None:
         try:
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             result = prepare_update_for_next_launch(self._update_result)
         except Exception as exc:
-            nuke.message(f"TCollection: failed to prepare the update.\n\n{exc}")  # ty: ignore[unresolved-attribute]
+            self._banner_message = f"Unable to prepare the update: {exc}"
+            self._banner_tone = "error"
+            self.refresh_all()
             return
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
 
-        self._refresh_collection_state()
-        self._update_summary.setText(
-            f"TCollection {result['version']} has been downloaded into the managed versions folder. Restart Nuke to activate it."
+        self._banner_message = (
+            f"TCollection {result['version']} has been downloaded. Restart Nuke to activate it."
         )
-        self._prepare_button.setEnabled(False)
-        nuke.message(  # ty: ignore[unresolved-attribute]
-            "TCollection update prepared.\n\n"
-            f"Version: {result['version']}\n"
-            "Restart Nuke to activate it."
-        )
+        self._banner_tone = "info"
+        self.refresh_all()
 
     def _open_release_notes(self) -> None:
-        if self._update_result is None:
-            return
+        if self._update_result is not None:
+            notes_url = _safe_url(str(self._update_result.get("notes_url", "")).strip())
+            if notes_url:
+                self._open_external_url(notes_url)
+                return
 
-        notes_url = str(self._update_result.get("notes_url", "")).strip()
-        if not notes_url:
-            return
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(notes_url))
+        links = get_collection_info().get("links", {})
+        if not isinstance(links, dict):
+            links = {}
+        releases_url = _safe_url(str(links.get("releases_url", "")).strip())
+        if releases_url:
+            self._open_external_url(releases_url)
+
+    def _open_external_url(self, url: str) -> bool:
+        safe_url = _safe_url(url)
+        if not safe_url:
+            return False
+        return bool(QtGui.QDesktopServices.openUrl(QtCore.QUrl(safe_url)))
+
+    def _html_template(self) -> str:
+        return """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCollection</title>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@500;600;700&display=swap");
+
+    :root {
+      --bg: #0a0a0a;
+      --bg-soft: #131314;
+      --surface: rgba(30, 31, 32, 0.9);
+      --surface-strong: rgba(40, 42, 44, 0.96);
+      --surface-hover: rgba(51, 53, 55, 0.98);
+      --line: rgba(255, 255, 255, 0.08);
+      --line-soft: rgba(255, 255, 255, 0.05);
+      --text: #f5f5f5;
+      --text-soft: #c4c7c5;
+      --text-muted: #8e918f;
+      --primary: #a8c7fa;
+      --primary-strong: #d3e3fd;
+      --danger: #f2b8b5;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.22);
+      --radius-xl: 34px;
+      --radius-lg: 28px;
+      --radius-md: 22px;
+      --radius-pill: 999px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background:
+        radial-gradient(circle at top, rgba(168, 199, 250, 0.08), transparent 28%),
+        linear-gradient(180deg, #101112 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+      overflow-y: auto;
+      user-select: none;
+    }
+
+    body::-webkit-scrollbar { width: 10px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+    }
+
+    .page-shell {
+      width: min(100%, 1080px);
+      margin: 0 auto;
+      padding: 28px 28px 40px;
+    }
+
+    .floating-bar {
+      position: sticky;
+      top: 20px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: min(100%, 920px);
+      margin: 0 auto 42px;
+      padding: 10px 12px 10px 18px;
+      border-radius: var(--radius-pill);
+      background: rgba(18, 18, 18, 0.82);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .floating-brand {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .floating-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-chip,
+    .action-button,
+    .support-link,
+    .close-button {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .nav-chip:hover,
+    .action-button:hover,
+    .support-link:hover,
+    .close-button:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .nav-chip.primary,
+    .action-button.primary {
+      background: var(--primary);
+      color: #131314;
+      border-color: transparent;
+      font-weight: 600;
+    }
+
+    .nav-chip.primary:hover,
+    .action-button.primary:hover {
+      background: var(--primary-strong);
+    }
+
+    .action-button[disabled] {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      padding: 18px 0 8px;
+      margin-bottom: 34px;
+    }
+
+    .hero-kicker,
+    .section-kicker {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(163, 163, 163, 0.9);
+    }
+
+    .hero-title {
+      margin: 0;
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: clamp(42px, 6vw, 76px);
+      line-height: 0.95;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      color: #ffffff;
+    }
+
+    .hero-subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-soft);
+    }
+
+    .hero-description {
+      width: min(100%, 720px);
+      margin: 0;
+      color: rgba(196, 199, 197, 0.88);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .hero-pills {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero-pill,
+    .build-pill,
+    .status-pill,
+    .version-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .build-pill strong {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .content-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      width: min(100%, 980px);
+      margin: 0 auto;
+    }
+
+    .panel,
+    .asset-row,
+    .stat-card {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .panel {
+      border-radius: var(--radius-xl);
+      padding: 30px;
+      backdrop-filter: blur(22px);
+    }
+
+    .panel-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: 30px;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+    }
+
+    .panel-body,
+    .panel-meta {
+      margin: 0;
+      color: rgba(196, 199, 197, 0.9);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .banner {
+      margin-top: 6px;
+      padding: 15px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+      border: 1px solid transparent;
+    }
+
+    .banner.info {
+      background: rgba(168, 199, 250, 0.12);
+      border-color: rgba(168, 199, 250, 0.18);
+      color: var(--primary);
+    }
+
+    .banner.error {
+      background: rgba(242, 184, 181, 0.12);
+      border-color: rgba(242, 184, 181, 0.18);
+      color: var(--danger);
+    }
+
+    .updates-actions,
+    .support-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+
+    .stat-card {
+      border-radius: 26px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(163, 163, 163, 0.78);
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      margin: 0 0 10px;
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: 23px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+    }
+
+    .stat-note {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(196, 199, 197, 0.78);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 18px;
+      margin-top: 18px;
+    }
+
+    .meta-item {
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line-soft);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .meta-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(163, 163, 163, 0.78);
+    }
+
+    .meta-item span {
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .section-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .asset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .asset-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      width: 100%;
+      padding: 18px 20px;
+      border-radius: 28px;
+      background: var(--surface);
+      cursor: pointer;
+      text-align: left;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+    }
+
+    .asset-row:hover {
+      transform: translateY(-2px);
+      background: var(--surface-hover);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .asset-main {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .asset-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .asset-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .asset-initials {
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+    }
+
+    .asset-copy {
+      min-width: 0;
+    }
+
+    .asset-name {
+      margin: 0;
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .asset-subtitle {
+      margin: 5px 0 0;
+      color: rgba(196, 199, 197, 0.82);
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 460px;
+    }
+
+    .asset-side {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .status-pill {
+      border-color: transparent;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    .version-pill {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      color: var(--text-soft);
+      background: rgba(19, 19, 20, 0.9);
+    }
+
+    .asset-chevron {
+      color: rgba(196, 199, 197, 0.72);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .empty-state {
+      padding: 16px 0 2px;
+      color: rgba(196, 199, 197, 0.72);
+      font-size: 13px;
+    }
+
+    .support-link {
+      color: var(--text-soft);
+    }
+
+    .support-link.primary {
+      background: rgba(168, 199, 250, 0.12);
+      color: var(--primary);
+      border-color: rgba(168, 199, 250, 0.18);
+    }
+
+    .support-link.danger {
+      background: rgba(242, 184, 181, 0.12);
+      color: var(--danger);
+      border-color: rgba(242, 184, 181, 0.18);
+    }
+
+    .modal-shell {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 34px;
+      background: rgba(10, 10, 10, 0.72);
+      backdrop-filter: blur(22px);
+    }
+
+    .modal-shell.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: min(100%, 860px);
+      max-height: min(90vh, 900px);
+      overflow: auto;
+      padding: 28px;
+      border-radius: 30px;
+      background: rgba(30, 31, 32, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-card::-webkit-scrollbar { width: 8px; }
+    .modal-card::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+    }
+
+    .modal-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .modal-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: #ffffff;
+    }
+
+    .modal-subtitle {
+      margin: 0;
+      color: rgba(196, 199, 197, 0.82);
+      font-size: 13px;
+    }
+
+    .modal-hero {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 22px;
+      align-items: start;
+      margin-bottom: 22px;
+      padding: 22px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--line-soft);
+    }
+
+    .modal-icon {
+      width: 110px;
+      height: 110px;
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .modal-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .modal-icon .asset-initials {
+      font-size: 28px;
+    }
+
+    .modal-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .modal-notes {
+      margin: 0;
+      color: rgba(196, 199, 197, 0.9);
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+
+    .modal-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      animation: fadeUp 560ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .meta-grid,
+      .modal-meta-grid { grid-template-columns: 1fr; }
+      .asset-subtitle { max-width: 280px; }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell { padding: 18px 18px 30px; }
+      .floating-bar {
+        position: static;
+        width: 100%;
+        margin-bottom: 28px;
+        border-radius: 28px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .floating-actions { justify-content: stretch; }
+      .nav-chip,
+      .close-button { width: 100%; justify-content: center; }
+      .panel { padding: 22px; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .asset-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .asset-side {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .asset-subtitle { max-width: none; white-space: normal; }
+      .modal-shell { padding: 18px; }
+      .modal-card { padding: 22px; }
+      .modal-hero {
+        grid-template-columns: 1fr;
+      }
+      .modal-icon {
+        width: 84px;
+        height: 84px;
+        border-radius: 24px;
+      }
+      .modal-top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <script id="tcollection-state" type="application/json">__TCOLLECTION_STATE__</script>
+  <div id="app"></div>
+  <div id="asset-modal" class="modal-shell"></div>
+
+  <script>
+    const stateNode = document.getElementById("tcollection-state");
+    let state = JSON.parse(stateNode.textContent);
+    let bridge = null;
+    let busyAction = "";
+    let activeAssetId = "";
+
+    if (window.qt && window.qt.webChannelTransport && window.QWebChannel) {
+      new QWebChannel(window.qt.webChannelTransport, function(channel) {
+        bridge = channel.objects.tcollectionBridge || null;
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function getAllAssets() {
+      return (state.sections || []).flatMap((section) => section.items || []);
+    }
+
+    function findAsset(assetId) {
+      return getAllAssets().find((asset) => asset.id === assetId) || null;
+    }
+
+    function renderAssetIcon(asset, big) {
+      const initials = escapeHtml(asset.initials || "TC");
+      if (asset.icon_data_url) {
+        return `<img src="${asset.icon_data_url}" alt="${escapeHtml(asset.title)} icon">`;
+      }
+      return `<span class="asset-initials">${initials}</span>`;
+    }
+
+    function renderStatusPill(asset) {
+      const accent = escapeHtml(asset.status_accent || "#bdc6cf");
+      const surface = escapeHtml(asset.status_surface || "#25303c");
+      const border = escapeHtml(asset.status_border || "transparent");
+      const label = escapeHtml(asset.status_label || asset.status || "Unknown");
+      return `
+        <span class="status-pill" style="background:${surface};color:${accent};border-color:${border};">
+          <span class="status-dot" style="background:${accent};color:${accent};"></span>
+          ${label}
+        </span>
+      `;
+    }
+
+    function renderStats() {
+      return (state.stats || []).map((stat, index) => `
+        <article class="stat-card reveal" style="animation-delay:${80 + index * 35}ms;">
+          <span class="stat-label">${escapeHtml(stat.label)}</span>
+          <p class="stat-value">${escapeHtml(stat.value)}</p>
+          <p class="stat-note">${escapeHtml(stat.note)}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderSection(section, sectionIndex) {
+      const items = section.items || [];
+      const itemsHtml = items.length
+        ? items.map((asset, itemIndex) => `
+            <button class="asset-row reveal" data-asset-id="${escapeHtml(asset.id)}"
+              style="animation-delay:${120 + sectionIndex * 50 + itemIndex * 30}ms;">
+              <div class="asset-main">
+                <div class="asset-icon">${renderAssetIcon(asset, false)}</div>
+                <div class="asset-copy">
+                  <h3 class="asset-name">${escapeHtml(asset.title)}</h3>
+                  <p class="asset-subtitle">${escapeHtml(asset.subtitle)}</p>
+                </div>
+              </div>
+              <div class="asset-side">
+                <span class="version-pill">${escapeHtml(asset.version)}</span>
+                ${renderStatusPill(asset)}
+                <span class="asset-chevron">+</span>
+              </div>
+            </button>
+          `).join("")
+        : `<div class="empty-state">Nothing packaged in this section yet.</div>`;
+
+      return `
+        <section class="panel section-group reveal" style="animation-delay:${120 + sectionIndex * 40}ms;">
+          <div class="panel-header">
+            <span class="section-kicker">${escapeHtml(section.title)}</span>
+            <h2 class="panel-title">${escapeHtml(section.title)}</h2>
+            <p class="panel-body">${escapeHtml(section.description)}</p>
+          </div>
+          <div class="asset-list">${itemsHtml}</div>
+        </section>
+      `;
+    }
+
+    function renderSupportLinks() {
+      const links = [];
+      if (state.collection && state.collection.repo_url) {
+        links.push(`<button class="support-link" data-action="open-url" data-url="${escapeHtml(state.collection.repo_url)}">Open Repository</button>`);
+      }
+      if (state.collection && state.collection.releases_url) {
+        links.push(`<button class="support-link primary" data-action="open-url" data-url="${escapeHtml(state.collection.releases_url)}">Open Releases</button>`);
+      }
+      links.push(`<button class="support-link danger" data-action="close-window">Close Window</button>`);
+      return links.join("");
+    }
+
+    function renderPage() {
+      const updates = state.updates || {};
+      const header = state.header || {};
+      const banner = state.banner || {};
+      const installBusy = busyAction === "install";
+      const checkBusy = busyAction === "check";
+      const notesBusy = busyAction === "notes";
+
+      const bannerHtml = banner.message
+        ? `<div class="banner ${escapeHtml(banner.tone || "info")}">${escapeHtml(banner.message)}</div>`
+        : "";
+
+      document.getElementById("app").innerHTML = `
+        <div class="page-shell">
+          <div class="floating-bar reveal" style="animation-delay:40ms;">
+            <div class="floating-brand">Thomas Petroni / TCollection</div>
+            <div class="floating-actions">
+              <button class="nav-chip" data-action="open-url" data-url="${escapeHtml((state.collection && state.collection.repo_url) || "")}">Repository</button>
+              <button class="nav-chip" data-action="open-release-notes">${notesBusy ? "Opening..." : "Release Notes"}</button>
+              <button class="close-button" data-action="close-window">Close</button>
+            </div>
+          </div>
+
+          <header class="hero reveal" style="animation-delay:70ms;">
+            <span class="hero-kicker">${escapeHtml(header.kicker || "Collection manager")}</span>
+            <h1 class="hero-title">${escapeHtml((state.collection && state.collection.display_name) || "TCollection")}</h1>
+            <p class="hero-subtitle">${escapeHtml(header.subtitle || "")}</p>
+            <p class="hero-description">${escapeHtml(header.description || "")}</p>
+            <div class="hero-pills">
+              <span class="build-pill">Current build <strong>v${escapeHtml((state.collection && state.collection.version) || "0.0.0")}</strong></span>
+              <span class="hero-pill">${escapeHtml(header.hero_pill || "")}</span>
+            </div>
+          </header>
+
+          <main class="content-stack">
+            <section class="panel reveal" style="animation-delay:100ms;">
+              <div class="panel-header">
+                <span class="section-kicker">Updates</span>
+                <h2 class="panel-title">Updates & Versions</h2>
+                <p class="panel-body">${escapeHtml(updates.summary || "")}</p>
+              </div>
+              ${bannerHtml}
+              <div class="updates-actions">
+                <button class="action-button primary" data-action="check-updates" ${checkBusy ? "disabled" : ""}>
+                  ${checkBusy ? "Checking..." : "Check Updates"}
+                </button>
+                <button class="action-button" data-action="install-update" ${(updates.install_enabled && !installBusy) ? "" : "disabled"}>
+                  ${installBusy ? "Installing..." : escapeHtml(updates.install_label || "Install for Next Launch")}
+                </button>
+                <button class="action-button" data-action="open-release-notes" ${updates.notes_url ? "" : "disabled"}>
+                  Release Notes
+                </button>
+              </div>
+
+              <div class="stats-grid">${renderStats()}</div>
+
+              <div class="meta-grid">
+                <div class="meta-item">
+                  <strong>Channel</strong>
+                  <span>${escapeHtml(updates.channel || "stable")}</span>
+                </div>
+                <div class="meta-item">
+                  <strong>Runtime Root</strong>
+                  <span>${escapeHtml(updates.runtime_root || "")}</span>
+                </div>
+                <div class="meta-item">
+                  <strong>Managed Root</strong>
+                  <span>${escapeHtml(updates.managed_root || "")}</span>
+                </div>
+                <div class="meta-item">
+                  <strong>Versions Root</strong>
+                  <span>${escapeHtml(updates.versions_root || "")}</span>
+                </div>
+              </div>
+            </section>
+
+            ${(state.sections || []).map(renderSection).join("")}
+
+            <section class="panel reveal" style="animation-delay:220ms;">
+              <div class="panel-header">
+                <span class="section-kicker">Resources</span>
+                <h2 class="panel-title">Support & Links</h2>
+                <p class="panel-meta">Keep the collection maintainable for you, and simple to discover for artists.</p>
+              </div>
+              <div class="support-row">${renderSupportLinks()}</div>
+            </section>
+          </main>
+        </div>
+      `;
+    }
+
+    function renderModal() {
+      const modal = document.getElementById("asset-modal");
+      const asset = findAsset(activeAssetId);
+      if (!asset) {
+        modal.className = "modal-shell";
+        modal.innerHTML = "";
+        return;
+      }
+
+      const repoButton = asset.repo_url
+        ? `<button class="action-button" data-action="open-url" data-url="${escapeHtml(asset.repo_url)}">Open Repository</button>`
+        : "";
+      const releasesButton = asset.releases_url
+        ? `<button class="action-button primary" data-action="open-url" data-url="${escapeHtml(asset.releases_url)}">Open Releases</button>`
+        : "";
+
+      modal.className = "modal-shell open";
+      modal.innerHTML = `
+        <div class="modal-card">
+          <div class="modal-top">
+            <div class="modal-title-wrap">
+              <span class="section-kicker">${escapeHtml(asset.kind)}</span>
+              <h2 class="modal-title">${escapeHtml(asset.title)}</h2>
+              <p class="modal-subtitle">${escapeHtml(asset.subtitle)}</p>
+            </div>
+            <button class="close-button" data-action="close-modal">Close</button>
+          </div>
+
+          <div class="modal-hero">
+            <div class="modal-icon">${renderAssetIcon(asset, true)}</div>
+            <div class="modal-copy">
+              <div class="hero-pills">
+                <span class="version-pill">${escapeHtml(asset.version)}</span>
+                ${renderStatusPill(asset)}
+              </div>
+              <p class="modal-notes">${escapeHtml(asset.notes)}</p>
+            </div>
+          </div>
+
+          <div class="modal-meta-grid">
+            <div class="meta-item">
+              <strong>Kind</strong>
+              <span>${escapeHtml(asset.kind)}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Status</strong>
+              <span>${escapeHtml(asset.status_label)}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Relative Path</strong>
+              <span>${escapeHtml(asset.relative_path || "Not available")}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Source</strong>
+              <span>${escapeHtml(asset.source_repo || "Local package asset")}</span>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            ${repoButton}
+            ${releasesButton}
+          </div>
+        </div>
+      `;
+    }
+
+    function rerender() {
+      renderPage();
+      renderModal();
+    }
+
+    function callBridge(method, arg) {
+      return new Promise((resolve, reject) => {
+        if (!bridge || typeof bridge[method] !== "function") {
+          reject(new Error("TCollection bridge is not ready."));
+          return;
+        }
+
+        const callback = function(result) {
+          resolve(result);
+        };
+
+        if (typeof arg === "undefined") {
+          bridge[method](callback);
+          return;
+        }
+
+        bridge[method](arg, callback);
+      });
+    }
+
+    async function refreshFromBridge(method, busyKey) {
+      busyAction = busyKey;
+      rerender();
+      try {
+        const result = await callBridge(method);
+        state = JSON.parse(result);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        busyAction = "";
+        rerender();
+      }
+    }
+
+    document.addEventListener("click", async function(event) {
+      const assetButton = event.target.closest("[data-asset-id]");
+      if (assetButton) {
+        activeAssetId = assetButton.getAttribute("data-asset-id") || "";
+        renderModal();
+        return;
+      }
+
+      const actionTarget = event.target.closest("[data-action]");
+      if (!actionTarget) {
+        if (event.target.id === "asset-modal") {
+          activeAssetId = "";
+          renderModal();
+        }
+        return;
+      }
+
+      const action = actionTarget.getAttribute("data-action");
+      if (action === "close-modal") {
+        activeAssetId = "";
+        renderModal();
+        return;
+      }
+
+      if (action === "check-updates") {
+        await refreshFromBridge("checkUpdates", "check");
+        return;
+      }
+
+      if (action === "install-update") {
+        if (actionTarget.hasAttribute("disabled")) {
+          return;
+        }
+        await refreshFromBridge("installUpdate", "install");
+        return;
+      }
+
+      if (action === "open-release-notes") {
+        busyAction = "notes";
+        rerender();
+        try {
+          const result = await callBridge("openReleaseNotes");
+          state = JSON.parse(result);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          busyAction = "";
+          rerender();
+        }
+        return;
+      }
+
+      if (action === "open-url") {
+        const url = actionTarget.getAttribute("data-url") || "";
+        if (url && bridge && typeof bridge.openExternalUrl === "function") {
+          bridge.openExternalUrl(url, function() {});
+        }
+        return;
+      }
+
+      if (action === "close-window") {
+        if (bridge && typeof bridge.closeWindow === "function") {
+          bridge.closeWindow();
+        }
+      }
+    });
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape" && activeAssetId) {
+        activeAssetId = "";
+        renderModal();
+      }
+    });
+
+    rerender();
+  </script>
+</body>
+</html>
+"""
 
     def closeEvent(self, event: Any) -> None:  # pragma: no cover - UI lifecycle
         global _SETTINGS_DIALOG
