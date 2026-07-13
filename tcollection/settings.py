@@ -716,10 +716,8 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
 
     :root {
       --bg: #0a0a0a;
-      --bg-soft: #131314;
-      --surface: rgba(30, 31, 32, 0.9);
-      --surface-strong: rgba(40, 42, 44, 0.96);
-      --surface-hover: rgba(51, 53, 55, 0.98);
+      --surface: rgba(30, 31, 32, 0.92);
+      --surface-hover: rgba(40, 42, 44, 0.98);
       --line: rgba(255, 255, 255, 0.08);
       --line-soft: rgba(255, 255, 255, 0.05);
       --text: #f5f5f5;
@@ -728,11 +726,9 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       --primary: #a8c7fa;
       --primary-strong: #d3e3fd;
       --danger: #f2b8b5;
-      --shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-      --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.22);
+      --shadow: 0 18px 46px rgba(0, 0, 0, 0.24);
       --radius-xl: 34px;
       --radius-lg: 28px;
-      --radius-md: 22px;
       --radius-pill: 999px;
     }
 
@@ -740,7 +736,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     html, body { margin: 0; min-height: 100%; }
     body {
       background:
-        radial-gradient(circle at top, rgba(168, 199, 250, 0.08), transparent 28%),
+        radial-gradient(circle at top, rgba(168, 199, 250, 0.07), transparent 30%),
         linear-gradient(180deg, #101112 0%, var(--bg) 100%);
       color: var(--text);
       font-family: "DM Sans", "Segoe UI", sans-serif;
@@ -756,100 +752,18 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     }
 
     .page-shell {
-      width: min(100%, 1080px);
+      width: min(100%, 940px);
       margin: 0 auto;
-      padding: 28px 28px 40px;
-    }
-
-    .floating-bar {
-      position: sticky;
-      top: 20px;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      width: min(100%, 920px);
-      margin: 0 auto 42px;
-      padding: 10px 12px 10px 18px;
-      border-radius: var(--radius-pill);
-      background: rgba(18, 18, 18, 0.82);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .floating-brand {
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.03em;
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    .floating-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .nav-chip,
-    .action-button,
-    .support-link,
-    .close-button {
-      appearance: none;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-pill);
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--text);
-      padding: 10px 16px;
-      font: inherit;
-      font-size: 12px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .nav-chip:hover,
-    .action-button:hover,
-    .support-link:hover,
-    .close-button:hover {
-      transform: translateY(-1px);
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-
-    .nav-chip.primary,
-    .action-button.primary {
-      background: var(--primary);
-      color: #131314;
-      border-color: transparent;
-      font-weight: 600;
-    }
-
-    .nav-chip.primary:hover,
-    .action-button.primary:hover {
-      background: var(--primary-strong);
-    }
-
-    .action-button[disabled] {
-      opacity: 0.5;
-      cursor: default;
-      transform: none;
+      padding: 42px 24px 36px;
     }
 
     .hero {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       text-align: center;
-      padding: 18px 0 8px;
-      margin-bottom: 34px;
+      margin-bottom: 28px;
     }
 
     .hero-kicker,
@@ -864,7 +778,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     .hero-title {
       margin: 0;
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: clamp(42px, 6vw, 76px);
+      font-size: clamp(42px, 7vw, 68px);
       line-height: 0.95;
       font-weight: 600;
       letter-spacing: -0.04em;
@@ -873,19 +787,22 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
 
     .hero-subtitle {
       margin: 0;
-      font-size: 14px;
       color: var(--text-soft);
+      font-size: 14px;
     }
 
     .hero-description {
-      width: min(100%, 720px);
+      width: min(100%, 620px);
       margin: 0;
-      color: rgba(196, 199, 197, 0.88);
+      color: rgba(196, 199, 197, 0.86);
       font-size: 14px;
-      line-height: 1.8;
+      line-height: 1.75;
     }
 
-    .hero-pills {
+    .hero-pills,
+    .updates-pills,
+    .modal-pills,
+    .footer-links {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -893,77 +810,112 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       flex-wrap: wrap;
     }
 
-    .hero-pill,
     .build-pill,
+    .info-pill,
     .status-pill,
-    .version-pill {
+    .version-pill,
+    .action-button,
+    .footer-link,
+    .close-button {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       padding: 10px 16px;
       border-radius: var(--radius-pill);
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.04);
       color: var(--text);
+      font: inherit;
       font-size: 12px;
+      font-weight: 500;
       text-decoration: none;
+      white-space: nowrap;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
     }
 
-    .build-pill strong {
-      font-family: Consolas, "SFMono-Regular", monospace;
+    .action-button,
+    .footer-link,
+    .close-button {
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .action-button:hover,
+    .footer-link:hover,
+    .close-button:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .action-button.primary {
+      background: var(--primary);
+      color: #131314;
+      border-color: transparent;
       font-weight: 600;
-      color: #ffffff;
+    }
+
+    .action-button.primary:hover {
+      background: var(--primary-strong);
+    }
+
+    .action-button[disabled] {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+    }
+
+    .build-pill strong,
+    .version-pill {
+      font-family: Consolas, "SFMono-Regular", monospace;
     }
 
     .content-stack {
       display: flex;
       flex-direction: column;
-      gap: 22px;
-      width: min(100%, 980px);
-      margin: 0 auto;
+      gap: 18px;
     }
 
     .panel,
     .asset-row,
-    .stat-card {
+    .summary-line {
       border: 1px solid var(--line);
       background: var(--surface);
-      box-shadow: var(--shadow-soft);
+      box-shadow: var(--shadow);
     }
 
     .panel {
       border-radius: var(--radius-xl);
-      padding: 30px;
-      backdrop-filter: blur(22px);
+      padding: 28px;
     }
 
     .panel-header {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 18px;
+      gap: 8px;
+      margin-bottom: 16px;
     }
 
     .panel-title {
       margin: 0;
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 30px;
+      font-size: 28px;
       line-height: 1.05;
       letter-spacing: -0.03em;
       color: #ffffff;
     }
 
-    .panel-body,
-    .panel-meta {
+    .panel-body {
       margin: 0;
-      color: rgba(196, 199, 197, 0.9);
+      color: rgba(196, 199, 197, 0.88);
       font-size: 13px;
-      line-height: 1.75;
+      line-height: 1.7;
     }
 
     .banner {
-      margin-top: 6px;
-      padding: 15px 18px;
+      margin: 0 0 16px;
+      padding: 14px 16px;
       border-radius: 20px;
       font-size: 13px;
       line-height: 1.6;
@@ -982,113 +934,66 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       color: var(--danger);
     }
 
-    .updates-actions,
-    .support-row {
+    .updates-actions {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      gap: 12px;
-      margin-top: 22px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      margin: 22px 0;
-    }
-
-    .stat-card {
-      border-radius: 26px;
-      padding: 18px;
-      background: rgba(255, 255, 255, 0.035);
-    }
-
-    .stat-label {
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(163, 163, 163, 0.78);
-      margin-bottom: 12px;
-    }
-
-    .stat-value {
-      margin: 0 0 10px;
-      font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 23px;
-      font-weight: 600;
-      letter-spacing: -0.03em;
-      color: #ffffff;
-    }
-
-    .stat-note {
-      margin: 0;
-      font-size: 12px;
-      line-height: 1.6;
-      color: rgba(196, 199, 197, 0.78);
-    }
-
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px 18px;
+      gap: 10px;
       margin-top: 18px;
     }
 
-    .meta-item {
-      padding: 14px 16px;
-      border-radius: 20px;
-      border: 1px solid var(--line-soft);
-      background: rgba(255, 255, 255, 0.025);
+    .updates-pills {
+      justify-content: flex-start;
+      margin-top: 14px;
     }
 
-    .meta-item strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(163, 163, 163, 0.78);
+    .summary-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.03);
     }
 
-    .meta-item span {
-      color: var(--text-soft);
+    .summary-label {
+      color: var(--text-muted);
       font-size: 12px;
-      line-height: 1.6;
-      word-break: break-word;
+    }
+
+    .summary-value {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
     }
 
     .section-group {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     .asset-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .asset-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 18px;
+      gap: 16px;
       width: 100%;
-      padding: 18px 20px;
-      border-radius: 28px;
-      background: var(--surface);
+      padding: 16px 18px;
+      border-radius: 24px;
       cursor: pointer;
       text-align: left;
-      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
     }
 
     .asset-row:hover {
-      transform: translateY(-2px);
+      transform: translateY(-1px);
       background: var(--surface-hover);
       border-color: rgba(255, 255, 255, 0.12);
     }
@@ -1096,14 +1001,14 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     .asset-main {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       min-width: 0;
     }
 
     .asset-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 18px;
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
       background: rgba(255, 255, 255, 0.055);
       border: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
@@ -1124,7 +1029,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       font-size: 14px;
       font-weight: 700;
       color: var(--primary);
-      letter-spacing: 0.02em;
     }
 
     .asset-copy {
@@ -1134,27 +1038,26 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     .asset-name {
       margin: 0;
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 600;
-      letter-spacing: -0.02em;
       color: #ffffff;
     }
 
     .asset-subtitle {
-      margin: 5px 0 0;
-      color: rgba(196, 199, 197, 0.82);
+      margin: 4px 0 0;
+      color: rgba(196, 199, 197, 0.76);
       font-size: 12px;
-      line-height: 1.6;
+      line-height: 1.55;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 460px;
+      max-width: 480px;
     }
 
     .asset-side {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-shrink: 0;
     }
 
@@ -1169,53 +1072,34 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      box-shadow: 0 0 10px currentColor;
+      box-shadow: 0 0 8px currentColor;
     }
 
     .version-pill {
-      font-family: Consolas, "SFMono-Regular", monospace;
       color: var(--text-soft);
       background: rgba(19, 19, 20, 0.9);
     }
 
-    .asset-chevron {
-      color: rgba(196, 199, 197, 0.72);
-      font-size: 18px;
-      line-height: 1;
-    }
-
     .empty-state {
-      padding: 16px 0 2px;
+      padding: 10px 0 2px;
       color: rgba(196, 199, 197, 0.72);
       font-size: 13px;
     }
 
-    .support-link {
-      color: var(--text-soft);
-    }
-
-    .support-link.primary {
-      background: rgba(168, 199, 250, 0.12);
-      color: var(--primary);
-      border-color: rgba(168, 199, 250, 0.18);
-    }
-
-    .support-link.danger {
-      background: rgba(242, 184, 181, 0.12);
-      color: var(--danger);
-      border-color: rgba(242, 184, 181, 0.18);
+    .footer-links {
+      margin-top: 10px;
     }
 
     .modal-shell {
       position: fixed;
       inset: 0;
-      z-index: 40;
+      z-index: 20;
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 34px;
+      padding: 28px;
       background: rgba(10, 10, 10, 0.72);
-      backdrop-filter: blur(22px);
+      backdrop-filter: blur(18px);
     }
 
     .modal-shell.open {
@@ -1223,117 +1107,61 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     }
 
     .modal-card {
-      width: min(100%, 860px);
-      max-height: min(90vh, 900px);
-      overflow: auto;
-      padding: 28px;
-      border-radius: 30px;
+      width: min(100%, 640px);
+      padding: 24px;
+      border-radius: 28px;
       background: rgba(30, 31, 32, 0.96);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: var(--shadow);
-    }
-
-    .modal-card::-webkit-scrollbar { width: 8px; }
-    .modal-card::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 999px;
+      box-shadow: 0 22px 52px rgba(0, 0, 0, 0.34);
     }
 
     .modal-top {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 22px;
-    }
-
-    .modal-title-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      gap: 16px;
+      margin-bottom: 18px;
     }
 
     .modal-title {
       margin: 0;
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 34px;
+      font-size: 30px;
       line-height: 1;
       letter-spacing: -0.04em;
       color: #ffffff;
     }
 
     .modal-subtitle {
-      margin: 0;
+      margin: 8px 0 0;
       color: rgba(196, 199, 197, 0.82);
       font-size: 13px;
     }
 
-    .modal-hero {
-      display: grid;
-      grid-template-columns: 110px 1fr;
-      gap: 22px;
-      align-items: start;
-      margin-bottom: 22px;
-      padding: 22px;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid var(--line-soft);
-    }
-
-    .modal-icon {
-      width: 110px;
-      height: 110px;
-      border-radius: 30px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .modal-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .modal-icon .asset-initials {
-      font-size: 28px;
-    }
-
-    .modal-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-width: 0;
-    }
-
     .modal-notes {
-      margin: 0;
+      margin: 18px 0 0;
       color: rgba(196, 199, 197, 0.9);
       font-size: 14px;
       line-height: 1.75;
       white-space: pre-wrap;
     }
 
-    .modal-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+    .modal-pills {
+      justify-content: flex-start;
+      margin-top: 16px;
     }
 
     .modal-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 24px;
+      gap: 10px;
+      margin-top: 20px;
     }
 
     .reveal {
       opacity: 0;
-      transform: translateY(24px);
-      animation: fadeUp 560ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      transform: translateY(18px);
+      animation: fadeUp 460ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
     }
 
     @keyframes fadeUp {
@@ -1343,28 +1171,9 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       }
     }
 
-    @media (max-width: 980px) {
-      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .meta-grid,
-      .modal-meta-grid { grid-template-columns: 1fr; }
-      .asset-subtitle { max-width: 280px; }
-    }
-
     @media (max-width: 760px) {
-      .page-shell { padding: 18px 18px 30px; }
-      .floating-bar {
-        position: static;
-        width: 100%;
-        margin-bottom: 28px;
-        border-radius: 28px;
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .floating-actions { justify-content: stretch; }
-      .nav-chip,
-      .close-button { width: 100%; justify-content: center; }
+      .page-shell { padding: 28px 18px 28px; }
       .panel { padding: 22px; }
-      .stats-grid { grid-template-columns: 1fr; }
       .asset-row {
         align-items: flex-start;
         flex-direction: column;
@@ -1373,17 +1182,12 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         width: 100%;
         justify-content: space-between;
       }
-      .asset-subtitle { max-width: none; white-space: normal; }
+      .asset-subtitle {
+        max-width: none;
+        white-space: normal;
+      }
       .modal-shell { padding: 18px; }
-      .modal-card { padding: 22px; }
-      .modal-hero {
-        grid-template-columns: 1fr;
-      }
-      .modal-icon {
-        width: 84px;
-        height: 84px;
-        border-radius: 24px;
-      }
+      .modal-card { padding: 20px; }
       .modal-top {
         flex-direction: column;
         align-items: stretch;
@@ -1426,12 +1230,11 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       return getAllAssets().find((asset) => asset.id === assetId) || null;
     }
 
-    function renderAssetIcon(asset, big) {
-      const initials = escapeHtml(asset.initials || "TC");
+    function renderAssetIcon(asset) {
       if (asset.icon_data_url) {
         return `<img src="${asset.icon_data_url}" alt="${escapeHtml(asset.title)} icon">`;
       }
-      return `<span class="asset-initials">${initials}</span>`;
+      return `<span class="asset-initials">${escapeHtml(asset.initials || "TC")}</span>`;
     }
 
     function renderStatusPill(asset) {
@@ -1447,24 +1250,14 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       `;
     }
 
-    function renderStats() {
-      return (state.stats || []).map((stat, index) => `
-        <article class="stat-card reveal" style="animation-delay:${80 + index * 35}ms;">
-          <span class="stat-label">${escapeHtml(stat.label)}</span>
-          <p class="stat-value">${escapeHtml(stat.value)}</p>
-          <p class="stat-note">${escapeHtml(stat.note)}</p>
-        </article>
-      `).join("");
-    }
-
     function renderSection(section, sectionIndex) {
       const items = section.items || [];
       const itemsHtml = items.length
         ? items.map((asset, itemIndex) => `
             <button class="asset-row reveal" data-asset-id="${escapeHtml(asset.id)}"
-              style="animation-delay:${120 + sectionIndex * 50 + itemIndex * 30}ms;">
+              style="animation-delay:${110 + sectionIndex * 40 + itemIndex * 24}ms;">
               <div class="asset-main">
-                <div class="asset-icon">${renderAssetIcon(asset, false)}</div>
+                <div class="asset-icon">${renderAssetIcon(asset)}</div>
                 <div class="asset-copy">
                   <h3 class="asset-name">${escapeHtml(asset.title)}</h3>
                   <p class="asset-subtitle">${escapeHtml(asset.subtitle)}</p>
@@ -1473,14 +1266,13 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
               <div class="asset-side">
                 <span class="version-pill">${escapeHtml(asset.version)}</span>
                 ${renderStatusPill(asset)}
-                <span class="asset-chevron">+</span>
               </div>
             </button>
           `).join("")
         : `<div class="empty-state">Nothing packaged in this section yet.</div>`;
 
       return `
-        <section class="panel section-group reveal" style="animation-delay:${120 + sectionIndex * 40}ms;">
+        <section class="panel section-group reveal" style="animation-delay:${100 + sectionIndex * 35}ms;">
           <div class="panel-header">
             <span class="section-kicker">${escapeHtml(section.title)}</span>
             <h2 class="panel-title">${escapeHtml(section.title)}</h2>
@@ -1491,15 +1283,15 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       `;
     }
 
-    function renderSupportLinks() {
+    function renderFooterLinks() {
       const links = [];
       if (state.collection && state.collection.repo_url) {
-        links.push(`<button class="support-link" data-action="open-url" data-url="${escapeHtml(state.collection.repo_url)}">Open Repository</button>`);
+        links.push(`<button class="footer-link" data-action="open-url" data-url="${escapeHtml(state.collection.repo_url)}">Repository</button>`);
       }
       if (state.collection && state.collection.releases_url) {
-        links.push(`<button class="support-link primary" data-action="open-url" data-url="${escapeHtml(state.collection.releases_url)}">Open Releases</button>`);
+        links.push(`<button class="footer-link" data-action="open-url" data-url="${escapeHtml(state.collection.releases_url)}">Releases</button>`);
       }
-      links.push(`<button class="support-link danger" data-action="close-window">Close Window</button>`);
+      links.push(`<button class="footer-link" data-action="close-window">Close</button>`);
       return links.join("");
     }
 
@@ -1509,7 +1301,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       const banner = state.banner || {};
       const installBusy = busyAction === "install";
       const checkBusy = busyAction === "check";
-      const notesBusy = busyAction === "notes";
 
       const bannerHtml = banner.message
         ? `<div class="banner ${escapeHtml(banner.tone || "info")}">${escapeHtml(banner.message)}</div>`
@@ -1517,34 +1308,29 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
 
       document.getElementById("app").innerHTML = `
         <div class="page-shell">
-          <div class="floating-bar reveal" style="animation-delay:40ms;">
-            <div class="floating-brand">Thomas Petroni / TCollection</div>
-            <div class="floating-actions">
-              <button class="nav-chip" data-action="open-url" data-url="${escapeHtml((state.collection && state.collection.repo_url) || "")}">Repository</button>
-              <button class="nav-chip" data-action="open-release-notes">${notesBusy ? "Opening..." : "Release Notes"}</button>
-              <button class="close-button" data-action="close-window">Close</button>
-            </div>
-          </div>
-
-          <header class="hero reveal" style="animation-delay:70ms;">
+          <header class="hero reveal" style="animation-delay:50ms;">
             <span class="hero-kicker">${escapeHtml(header.kicker || "Collection manager")}</span>
             <h1 class="hero-title">${escapeHtml((state.collection && state.collection.display_name) || "TCollection")}</h1>
             <p class="hero-subtitle">${escapeHtml(header.subtitle || "")}</p>
             <p class="hero-description">${escapeHtml(header.description || "")}</p>
             <div class="hero-pills">
               <span class="build-pill">Current build <strong>v${escapeHtml((state.collection && state.collection.version) || "0.0.0")}</strong></span>
-              <span class="hero-pill">${escapeHtml(header.hero_pill || "")}</span>
             </div>
           </header>
 
           <main class="content-stack">
-            <section class="panel reveal" style="animation-delay:100ms;">
+            <section class="panel reveal" style="animation-delay:90ms;">
               <div class="panel-header">
                 <span class="section-kicker">Updates</span>
-                <h2 class="panel-title">Updates & Versions</h2>
+                <h2 class="panel-title">Updates</h2>
                 <p class="panel-body">${escapeHtml(updates.summary || "")}</p>
               </div>
               ${bannerHtml}
+              <div class="updates-pills">
+                <span class="info-pill">Latest ${escapeHtml(updates.latest_version || "")}</span>
+                <span class="info-pill">Installed ${escapeHtml(updates.managed_version || "")}</span>
+                <span class="info-pill">Pending ${escapeHtml(updates.pending_version || "None")}</span>
+              </div>
               <div class="updates-actions">
                 <button class="action-button primary" data-action="check-updates" ${checkBusy ? "disabled" : ""}>
                   ${checkBusy ? "Checking..." : "Check Updates"}
@@ -1556,39 +1342,18 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                   Release Notes
                 </button>
               </div>
-
-              <div class="stats-grid">${renderStats()}</div>
-
-              <div class="meta-grid">
-                <div class="meta-item">
-                  <strong>Channel</strong>
-                  <span>${escapeHtml(updates.channel || "stable")}</span>
-                </div>
-                <div class="meta-item">
-                  <strong>Runtime Root</strong>
-                  <span>${escapeHtml(updates.runtime_root || "")}</span>
-                </div>
-                <div class="meta-item">
-                  <strong>Managed Root</strong>
-                  <span>${escapeHtml(updates.managed_root || "")}</span>
-                </div>
-                <div class="meta-item">
-                  <strong>Versions Root</strong>
-                  <span>${escapeHtml(updates.versions_root || "")}</span>
-                </div>
-              </div>
             </section>
+
+            <div class="summary-line reveal" style="animation-delay:110ms;">
+              <span class="summary-label">Runtime</span>
+              <span class="summary-value">${escapeHtml(updates.runtime_root || "")}</span>
+            </div>
 
             ${(state.sections || []).map(renderSection).join("")}
 
-            <section class="panel reveal" style="animation-delay:220ms;">
-              <div class="panel-header">
-                <span class="section-kicker">Resources</span>
-                <h2 class="panel-title">Support & Links</h2>
-                <p class="panel-meta">Keep the collection maintainable for you, and simple to discover for artists.</p>
-              </div>
-              <div class="support-row">${renderSupportLinks()}</div>
-            </section>
+            <div class="footer-links reveal" style="animation-delay:160ms;">
+              ${renderFooterLinks()}
+            </div>
           </main>
         </div>
       `;
@@ -1604,17 +1369,17 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       }
 
       const repoButton = asset.repo_url
-        ? `<button class="action-button" data-action="open-url" data-url="${escapeHtml(asset.repo_url)}">Open Repository</button>`
+        ? `<button class="action-button" data-action="open-url" data-url="${escapeHtml(asset.repo_url)}">Repository</button>`
         : "";
       const releasesButton = asset.releases_url
-        ? `<button class="action-button primary" data-action="open-url" data-url="${escapeHtml(asset.releases_url)}">Open Releases</button>`
+        ? `<button class="action-button" data-action="open-url" data-url="${escapeHtml(asset.releases_url)}">Releases</button>`
         : "";
 
       modal.className = "modal-shell open";
       modal.innerHTML = `
         <div class="modal-card">
           <div class="modal-top">
-            <div class="modal-title-wrap">
+            <div>
               <span class="section-kicker">${escapeHtml(asset.kind)}</span>
               <h2 class="modal-title">${escapeHtml(asset.title)}</h2>
               <p class="modal-subtitle">${escapeHtml(asset.subtitle)}</p>
@@ -1622,35 +1387,12 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             <button class="close-button" data-action="close-modal">Close</button>
           </div>
 
-          <div class="modal-hero">
-            <div class="modal-icon">${renderAssetIcon(asset, true)}</div>
-            <div class="modal-copy">
-              <div class="hero-pills">
-                <span class="version-pill">${escapeHtml(asset.version)}</span>
-                ${renderStatusPill(asset)}
-              </div>
-              <p class="modal-notes">${escapeHtml(asset.notes)}</p>
-            </div>
+          <div class="modal-pills">
+            <span class="version-pill">${escapeHtml(asset.version)}</span>
+            ${renderStatusPill(asset)}
           </div>
 
-          <div class="modal-meta-grid">
-            <div class="meta-item">
-              <strong>Kind</strong>
-              <span>${escapeHtml(asset.kind)}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Status</strong>
-              <span>${escapeHtml(asset.status_label)}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Relative Path</strong>
-              <span>${escapeHtml(asset.relative_path || "Not available")}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Source</strong>
-              <span>${escapeHtml(asset.source_repo || "Local package asset")}</span>
-            </div>
-          </div>
+          <p class="modal-notes">${escapeHtml(asset.notes)}</p>
 
           <div class="modal-actions">
             ${repoButton}
@@ -1737,17 +1479,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       }
 
       if (action === "open-release-notes") {
-        busyAction = "notes";
-        rerender();
-        try {
-          const result = await callBridge("openReleaseNotes");
-          state = JSON.parse(result);
-        } catch (error) {
-          console.error(error);
-        } finally {
-          busyAction = "";
-          rerender();
-        }
+        await refreshFromBridge("openReleaseNotes", "notes");
         return;
       }
 
