@@ -22,6 +22,7 @@ Le repo node sert a:
 - coder le node
 - compiler Windows et Linux
 - publier une release `vX.Y.Z`
+- rester public ou prive selon la strategie produit
 
 ### Repo TCollection
 
@@ -31,6 +32,24 @@ Le repo TCollection sert a:
 - publier une experience produit coherente
 - embarquer les outils communs non lies a un seul node
 - exposer un seul point d'installation
+
+## Mode hybride recommande
+
+Pour evoluer vers une offre partiellement fermee sans casser le workflow:
+
+- garder `TCollection` public
+- garder les nodes gratuits publics si tu veux continuer a te faire connaitre
+- passer les nodes premium ou sensibles en repos prives
+- publier seulement leurs zips runtime via GitHub Releases
+
+Dans ce modele:
+
+- la source du node prive reste invisible
+- `TCollection` continue d'assembler la suite depuis des releases versionnees
+- les artistes ne voient toujours qu'une seule release `TCollection`
+
+La CI de `TCollection` peut consommer des releases de nodes prives via le secret
+`TCOLLECTION_NODE_REPO_TOKEN`.
 
 ## Flux de mise a jour d'un node
 

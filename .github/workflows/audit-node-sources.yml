@@ -25,6 +25,8 @@ jobs:
           python tools/sync_node_catalog.py
 
       - name: Audit node GitHub sources
+        env:
+          TCOLLECTION_NODE_REPO_TOKEN: ${{ secrets.TCOLLECTION_NODE_REPO_TOKEN }}
         run: python tools/audit_node_sources.py --strict-enabled --write-json audit/node_source_audit.json --write-md audit/NODE_SOURCE_AUDIT_FR.md
 
       - name: Upload audit artifacts

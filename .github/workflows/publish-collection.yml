@@ -45,6 +45,8 @@ jobs:
         run: python tools/validate_collection.py
 
       - name: Audit enabled node GitHub sources
+        env:
+          TCOLLECTION_NODE_REPO_TOKEN: ${{ secrets.TCOLLECTION_NODE_REPO_TOKEN }}
         run: python tools/audit_node_sources.py --strict-enabled --write-json audit/node_source_audit.json --write-md audit/NODE_SOURCE_AUDIT_FR.md
 
       - name: Ensure generated files are committed
@@ -77,6 +79,8 @@ jobs:
           echo "download_url=$DOWNLOAD_URL" >> "$GITHUB_OUTPUT"
 
       - name: Assemble TCollection from node releases
+        env:
+          TCOLLECTION_NODE_REPO_TOKEN: ${{ secrets.TCOLLECTION_NODE_REPO_TOKEN }}
         run: |
           python tools/assemble_collection.py \
             --source github-release \

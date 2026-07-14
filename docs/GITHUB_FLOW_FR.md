@@ -33,6 +33,20 @@ L'idee est de ne pas lancer la matrice complete a chaque push sur `main`.
 On garde un feedback rapide au quotidien, et on reserve le build complet aux
 releases ou aux executions manuelles.
 
+### Repos prives
+
+Si un node devient prive:
+
+- le repo source du node peut rester totalement prive
+- la CI du node continue de publier son zip runtime en release GitHub
+- `TCollection` recupere cet asset via le secret `TCOLLECTION_NODE_REPO_TOKEN`
+
+Cela permet de garder:
+
+- `TCollection` public
+- les updates et manifests publics de la collection
+- les sources sensibles hors du repo public
+
 ### 2. Runtime node
 
 - workflow separe sur runners self-hosted avec Nuke installe
@@ -188,6 +202,9 @@ Verifie:
 - assemblage local depuis les releases GitHub des nodes
 - coherence du catalogue de nodes et de leurs liens GitHub
 
+Si certains nodes sont prives, ce workflow peut utiliser le secret
+`TCOLLECTION_NODE_REPO_TOKEN` pour telecharger leurs assets de release.
+
 ### `publish-collection.yml`
 
 Fait:
@@ -201,6 +218,9 @@ Fait:
 - generation de `SHA256SUMS.txt`
 - publication des assets sur la release taggee
 
+Ce workflow peut aussi utiliser `TCOLLECTION_NODE_REPO_TOKEN` pour assembler une
+release `TCollection` depuis des nodes sources prives.
+
 ### `audit-node-sources.yml`
 
 Fait:
@@ -208,3 +228,6 @@ Fait:
 - verification des repos GitHub de nodes
 - verification des releases et assets attendus pour les nodes actifs
 - upload d'un rapport d'audit en artifact GitHub Actions
+
+Si certains nodes sont prives, ce workflow peut lui aussi utiliser
+`TCOLLECTION_NODE_REPO_TOKEN` pour auditer correctement leurs releases.

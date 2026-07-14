@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import tempfile
 import zipfile
@@ -119,9 +120,22 @@ def _copy_node_publish(stage_dir: Path, node_key: str, repo_path: Path) -> None:
     shutil.copytree(publish_src, publish_dst)
 
 
+def _github_release_headers() -> dict[str, str]:
+    headers = {"User-Agent": "TCollection-Assembler"}
+    token = (
+        str(os.environ.get("TCOLLECTION_NODE_REPO_TOKEN", "")).strip()
+        or str(os.environ.get("TCOLLECTION_GITHUB_TOKEN", "")).strip()
+        or str(os.environ.get("GITHUB_TOKEN", "")).strip()
+        or str(os.environ.get("GH_TOKEN", "")).strip()
+    )
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
 def _download_release_asset(repo: str, tag: str, asset_name: str, destination: Path) -> None:
     url = f"https://github.com/{repo}/releases/download/{tag}/{asset_name}"
-    request = Request(url, headers={"User-Agent": "TCollection-Assembler"})
+    request = Request(url, headers=_github_release_headers())
     with urlopen(request, timeout=30) as response:
         destination.write_bytes(response.read())
 

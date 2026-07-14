@@ -22,7 +22,12 @@ def _github_headers() -> dict[str, str]:
         "Accept": "application/vnd.github+json",
         "User-Agent": "TCollection-Node-Source-Audit",
     }
-    token = os.environ.get("GITHUB_TOKEN", "").strip() or os.environ.get("GH_TOKEN", "").strip()
+    token = (
+        os.environ.get("TCOLLECTION_NODE_REPO_TOKEN", "").strip()
+        or os.environ.get("TCOLLECTION_GITHUB_TOKEN", "").strip()
+        or os.environ.get("GITHUB_TOKEN", "").strip()
+        or os.environ.get("GH_TOKEN", "").strip()
+    )
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
