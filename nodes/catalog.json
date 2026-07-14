@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-07-12",
+  "updated_at": "2026-07-14",
   "nodes": [
     {
       "key": "BrushScatter",
@@ -57,14 +57,14 @@
     {
       "key": "TColorRamp",
       "label": "TColorRamp",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "status": "stable",
       "enabled_in_collection": true,
       "repo": "Tom-Petroni/TColorRamp",
       "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
       "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
-      "tag": "v1.0.0",
-      "asset_name": "TColorRamp-v1.0.0.zip",
+      "tag": "v1.0.1",
+      "asset_name": "TColorRamp-v1.0.1.zip",
       "notes": "Promoted to TSuite stable"
     },
     {

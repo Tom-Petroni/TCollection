@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "registry_updated_at": "2026-07-12",
+  "registry_updated_at": "2026-07-14",
   "nodes": [
     {
       "key": "TBlur",
@@ -19,7 +19,7 @@
     },
     {
       "key": "TColorRamp",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "status": "stable",
       "label": "TColorRamp",
       "source": {
@@ -27,9 +27,9 @@
         "repo": "Tom-Petroni/TColorRamp",
         "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
         "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
-        "tag": "v1.0.0",
-        "asset_name": "TColorRamp-v1.0.0.zip",
-        "archive_root": "TColorRamp-1.0.0"
+        "tag": "v1.0.1",
+        "asset_name": "TColorRamp-v1.0.1.zip",
+        "archive_root": "TColorRamp-1.0.1"
       }
     },
     {
