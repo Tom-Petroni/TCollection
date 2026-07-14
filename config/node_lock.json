@@ -19,7 +19,7 @@
     },
     {
       "key": "TColorRamp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "status": "stable",
       "label": "TColorRamp",
       "source": {
@@ -27,9 +27,9 @@
         "repo": "Tom-Petroni/TColorRamp",
         "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
         "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
-        "tag": "v1.0.1",
-        "asset_name": "TColorRamp-v1.0.1.zip",
-        "archive_root": "TColorRamp-1.0.1"
+        "tag": "v1.0.2",
+        "asset_name": "TColorRamp-v1.0.2.zip",
+        "archive_root": "TColorRamp-1.0.2"
       }
     },
     {

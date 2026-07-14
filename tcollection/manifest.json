@@ -2,7 +2,7 @@
   "collection": {
     "key": "TCollection",
     "display_name": "TCollection",
-    "version": "0.1.17",
+    "version": "0.1.18",
     "status": "planning",
     "links": {
       "repo_url": "https://github.com/Tom-Petroni/TCollection",
@@ -62,7 +62,7 @@
     {
       "key": "TColorRamp",
       "label": "TColorRamp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "status": "stable",
       "class_name": "TColorRamp",
       "bootstrap_module": "TColorRamp.init",
@@ -73,9 +73,9 @@
         "repo": "Tom-Petroni/TColorRamp",
         "repo_url": "https://github.com/Tom-Petroni/TColorRamp",
         "releases_url": "https://github.com/Tom-Petroni/TColorRamp/releases",
-        "tag": "v1.0.1",
-        "asset_name": "TColorRamp-v1.0.1.zip",
-        "archive_root": "TColorRamp-1.0.1"
+        "tag": "v1.0.2",
+        "asset_name": "TColorRamp-v1.0.2.zip",
+        "archive_root": "TColorRamp-1.0.2"
       }
     },
     {
