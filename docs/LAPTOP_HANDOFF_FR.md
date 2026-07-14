@@ -8,7 +8,7 @@ de GitHub, sans dependre de l'etat local de cette machine.
 Releases confirmees:
 
 - `TColorRamp` : `v1.0.2`
-- `TCollection` : `v0.1.18`
+- `TCollection` : `v0.1.19`
 
 Versions stables actuellement epinglees dans `TCollection`:
 
@@ -19,7 +19,7 @@ Versions stables actuellement epinglees dans `TCollection`:
 
 Releases utiles:
 
-- `TCollection` : `https://github.com/Tom-Petroni/TCollection/releases/tag/v0.1.18`
+- `TCollection` : `https://github.com/Tom-Petroni/TCollection/releases/tag/v0.1.19`
 - `TColorRamp` : `https://github.com/Tom-Petroni/TColorRamp/releases/tag/v1.0.2`
 
 ## Repos a cloner
@@ -59,7 +59,7 @@ Depuis un clone frais de `TCollection`:
 ```powershell
 cd C:\Dev\tsuite\TCollection
 python tools\validate_collection.py
-python tools\assemble_collection.py --source github-release --statuses stable --package-version 0.1.18 --output dist_portable
+python tools\assemble_collection.py --source github-release --statuses stable --package-version 0.1.19 --output dist_portable
 ```
 
 Ce test doit assembler une collection avec:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -16,14 +17,19 @@ AUDIT_JSON_PATH = ROOT_DIR / "audit" / "node_source_audit.json"
 AUDIT_DOC_PATH = ROOT_DIR / "audit" / "NODE_SOURCE_AUDIT_FR.md"
 
 
+def _github_headers() -> dict[str, str]:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "TCollection-Node-Source-Audit",
+    }
+    token = os.environ.get("GITHUB_TOKEN", "").strip() or os.environ.get("GH_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
 def _fetch_json(url: str) -> tuple[int, dict[str, Any]]:
-    request = Request(
-        url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "TCollection-Node-Source-Audit",
-        },
-    )
+    request = Request(url, headers=_github_headers())
     try:
         with urlopen(request, timeout=30) as response:
             payload = response.read().decode("utf-8")
