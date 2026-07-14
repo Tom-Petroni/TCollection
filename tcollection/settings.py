@@ -457,11 +457,9 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         script_count = len(sections[2]["items"])
 
         install_enabled = update_available and (pending_version != latest_version)
-        install_label = "Install for Next Launch"
+        install_label = "Install Update"
         if pending_version and pending_version == latest_version:
             install_label = "Ready on Next Launch"
-        elif update_available:
-            install_label = f"Install {latest_version}"
 
         return {
             "collection": {
@@ -474,9 +472,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             "header": {
                 "kicker": "Collection manager",
                 "subtitle": "Developed by Thomas Petroni",
-                "description": (
-                    "A single place inside Nuke to track versions, prepare updates, and browse the current collection contents."
-                ),
+                "description": "",
                 "hero_pill": "Portfolio-inspired collection settings",
             },
             "updates": {
@@ -563,6 +559,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         self._summary_label.setText(summary)
 
         self._prepare_button.setEnabled(bool(updates["install_enabled"]))
+        self._prepare_button.setText(str(updates.get("install_label", "Install Update")))
         self._notes_button.setEnabled(bool(updates["notes_url"]))
 
         sections_html: list[str] = []
@@ -619,10 +616,9 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             "<h2 style='font-family:Manrope,Segoe UI,sans-serif;font-size:28px;color:#ffffff;margin:0 0 8px;'>Updates</h2>"
             f"<p style='color:#c4c7c5;font-size:13px;'>{html.escape(updates['summary'])}</p>"
             "<ul style='color:#9aa0a6;font-size:12px;'>"
-            f"<li>Channel: {html.escape(updates['channel'])}</li>"
-            f"<li>Runtime root: {html.escape(updates['runtime_root'])}</li>"
-            f"<li>Managed root: {html.escape(updates['managed_root'])}</li>"
-            f"<li>Versions root: {html.escape(updates['versions_root'])}</li>"
+            f"<li>Latest: {html.escape(updates['latest_version'])}</li>"
+            f"<li>Installed: {html.escape(updates['managed_version'])}</li>"
+            f"<li>Pending: {html.escape(updates['pending_version'])}</li>"
             "</ul>"
             + "".join(sections_html)
             + "</body></html>"
@@ -791,14 +787,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       font-size: 14px;
     }
 
-    .hero-description {
-      width: min(100%, 620px);
-      margin: 0;
-      color: rgba(196, 199, 197, 0.86);
-      font-size: 14px;
-      line-height: 1.75;
-    }
-
     .hero-pills,
     .updates-pills,
     .modal-pills,
@@ -878,8 +866,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     }
 
     .panel,
-    .asset-row,
-    .summary-line {
+    .asset-row {
       border: 1px solid var(--line);
       background: var(--surface);
       box-shadow: var(--shadow);
@@ -946,27 +933,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       margin-top: 14px;
     }
 
-    .summary-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 18px;
-      border-radius: 22px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .summary-label {
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-
-    .summary-value {
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 500;
-    }
-
     .section-group {
       display: flex;
       flex-direction: column;
@@ -986,7 +952,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       gap: 16px;
       width: 100%;
       padding: 16px 18px;
-      border-radius: 24px;
+      border-radius: var(--radius-pill);
       cursor: pointer;
       text-align: left;
       transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
@@ -1006,27 +972,22 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     }
 
     .asset-icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.055);
-      border: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      overflow: hidden;
     }
 
     .asset-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      display: block;
     }
 
     .asset-initials {
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 14px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--primary);
     }
@@ -1301,6 +1262,17 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       const banner = state.banner || {};
       const installBusy = busyAction === "install";
       const checkBusy = busyAction === "check";
+      const primaryBusy = installBusy || checkBusy;
+      const hasInstallAction = !!updates.install_enabled || installBusy;
+      const primaryAction = hasInstallAction ? "install-update" : "check-updates";
+      let primaryLabel = "Check Updates";
+      if (checkBusy) {
+        primaryLabel = "Checking...";
+      } else if (installBusy) {
+        primaryLabel = "Installing...";
+      } else if (hasInstallAction) {
+        primaryLabel = "Install Update";
+      }
 
       const bannerHtml = banner.message
         ? `<div class="banner ${escapeHtml(banner.tone || "info")}">${escapeHtml(banner.message)}</div>`
@@ -1312,16 +1284,12 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             <span class="hero-kicker">${escapeHtml(header.kicker || "Collection manager")}</span>
             <h1 class="hero-title">${escapeHtml((state.collection && state.collection.display_name) || "TCollection")}</h1>
             <p class="hero-subtitle">${escapeHtml(header.subtitle || "")}</p>
-            <p class="hero-description">${escapeHtml(header.description || "")}</p>
-            <div class="hero-pills">
-              <span class="build-pill">Current build <strong>v${escapeHtml((state.collection && state.collection.version) || "0.0.0")}</strong></span>
-            </div>
+            ${header.description ? `<p class="hero-description">${escapeHtml(header.description)}</p>` : ""}
           </header>
 
           <main class="content-stack">
             <section class="panel reveal" style="animation-delay:90ms;">
               <div class="panel-header">
-                <span class="section-kicker">Updates</span>
                 <h2 class="panel-title">Updates</h2>
                 <p class="panel-body">${escapeHtml(updates.summary || "")}</p>
               </div>
@@ -1332,22 +1300,14 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 <span class="info-pill">Pending ${escapeHtml(updates.pending_version || "None")}</span>
               </div>
               <div class="updates-actions">
-                <button class="action-button primary" data-action="check-updates" ${checkBusy ? "disabled" : ""}>
-                  ${checkBusy ? "Checking..." : "Check Updates"}
-                </button>
-                <button class="action-button" data-action="install-update" ${(updates.install_enabled && !installBusy) ? "" : "disabled"}>
-                  ${installBusy ? "Installing..." : escapeHtml(updates.install_label || "Install for Next Launch")}
+                <button class="action-button primary" data-action="${primaryAction}" ${primaryBusy ? "disabled" : ""}>
+                  ${escapeHtml(primaryLabel)}
                 </button>
                 <button class="action-button" data-action="open-release-notes" ${updates.notes_url ? "" : "disabled"}>
                   Release Notes
                 </button>
               </div>
             </section>
-
-            <div class="summary-line reveal" style="animation-delay:110ms;">
-              <span class="summary-label">Runtime</span>
-              <span class="summary-value">${escapeHtml(updates.runtime_root || "")}</span>
-            </div>
 
             ${(state.sections || []).map(renderSection).join("")}
 
