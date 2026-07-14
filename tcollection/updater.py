@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 COLLECTION_CONFIG_PATH = ROOT_DIR / "config" / "collection.json"
 VERSION_PATH = ROOT_DIR / "VERSION"
 MANAGED_ROOT_ENV = "TCOLLECTION_MANAGED_ROOT"
+UPDATE_CACHE_NAME = "update_check_cache.json"
+DEFAULT_UPDATE_CACHE_MINUTES = 30
 
 
 def _load_collection_config() -> dict[str, Any]:
@@ -42,21 +45,47 @@ def _current_version() -> str:
     return VERSION_PATH.read_text(encoding="utf-8").strip()
 
 
+def _update_reason(current_version: str, latest_version: str) -> str:
+    current_key = _normalize_version(current_version)
+    latest_key = _normalize_version(latest_version)
+    if latest_key > current_key:
+        return "Update available."
+    if latest_key < current_key:
+        return "This install is newer than the latest published release."
+    return "TCollection is already up to date."
+
+
 def _read_remote_manifest(manifest_url: str) -> dict[str, Any]:
-    with urlopen(manifest_url, timeout=5) as response:
+    request = Request(
+        manifest_url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "TCollection-Updater",
+        },
+    )
+    with urlopen(request, timeout=5) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload)
 
 
+def _github_api_headers() -> dict[str, str]:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "TCollection-Updater",
+    }
+    token = (
+        str(os.environ.get("TCOLLECTION_GITHUB_TOKEN", "")).strip()
+        or str(os.environ.get("GITHUB_TOKEN", "")).strip()
+        or str(os.environ.get("GH_TOKEN", "")).strip()
+    )
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
 def _read_latest_github_release(repo: str) -> dict[str, Any]:
     api_url = f"https://api.github.com/repos/{repo}/releases/latest"
-    request = Request(
-        api_url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "TCollection-Updater",
-        },
-    )
+    request = Request(api_url, headers=_github_api_headers())
     with urlopen(request, timeout=5) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload)
@@ -97,7 +126,7 @@ def _resolve_github_release_result(
         "channel": str(updates.get("channel", "")),
         "download_url": download_url,
         "notes_url": str(release.get("html_url", "")).strip(),
-        "reason": "Update available." if available else "TCollection is already up to date.",
+        "reason": _update_reason(current_version, latest_version),
     }
 
 
@@ -140,6 +169,10 @@ def _state_path(name: str) -> Path:
     return _managed_root() / name
 
 
+def _update_cache_path() -> Path:
+    return _state_path(UPDATE_CACHE_NAME)
+
+
 def _read_json_if_exists(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -152,6 +185,59 @@ def _read_json_if_exists(path: Path) -> dict[str, Any]:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _update_cache_ttl_seconds(updates: dict[str, Any]) -> int:
+    raw_value = updates.get("cache_ttl_minutes", DEFAULT_UPDATE_CACHE_MINUTES)
+    try:
+        minutes = max(0, int(float(raw_value)))
+    except Exception:
+        minutes = DEFAULT_UPDATE_CACHE_MINUTES
+    return minutes * 60
+
+
+def _read_cached_update_result(
+    current_version: str,
+    channel: str,
+    updates: dict[str, Any],
+) -> dict[str, Any] | None:
+    cache = _read_json_if_exists(_update_cache_path())
+    if not cache:
+        return None
+
+    if str(cache.get("current_version", "")).strip() != current_version:
+        return None
+    if str(cache.get("channel", "")).strip() != channel:
+        return None
+
+    expires_at = float(cache.get("expires_at", 0) or 0)
+    if expires_at <= time.time():
+        return None
+
+    result = cache.get("result")
+    if not isinstance(result, dict):
+        return None
+
+    cached = dict(result)
+    cached["cached"] = True
+    return cached
+
+
+def _write_cached_update_result(
+    current_version: str,
+    channel: str,
+    updates: dict[str, Any],
+    result: dict[str, Any],
+) -> None:
+    now = time.time()
+    payload = {
+        "current_version": current_version,
+        "channel": channel,
+        "checked_at": now,
+        "expires_at": now + _update_cache_ttl_seconds(updates),
+        "result": dict(result),
+    }
+    _write_json(_update_cache_path(), payload)
 
 
 def _required_entry_paths(base_dir: Path) -> list[Path]:
@@ -252,10 +338,11 @@ def _stage_version_archive(archive_path: Path, version: str) -> Path:
         return final_version_root
 
 
-def check_for_updates() -> dict[str, Any]:
+def check_for_updates(force_refresh: bool = False) -> dict[str, Any]:
     config = _load_collection_config()
     updates = dict(config.get("updates", {}))
     current_version = _current_version()
+    channel = str(updates.get("channel", "")).strip()
 
     if not updates.get("enabled", False):
         return {
@@ -268,16 +355,52 @@ def check_for_updates() -> dict[str, Any]:
 
     manifest_url = str(updates.get("manifest_url", "")).strip()
     provider = str(updates.get("provider", "")).strip().lower()
-    if provider == "github-release":
+
+    if not force_refresh:
+        cached = _read_cached_update_result(current_version, channel, updates)
+        if cached is not None:
+            return cached
+
+    if manifest_url:
         try:
-            return _resolve_github_release_result(updates, current_version)
+            result = _read_remote_manifest(manifest_url)
+            latest_version = str(result.get("version", "")).strip() or current_version
+            resolved = {
+                "available": _normalize_version(latest_version) > _normalize_version(current_version),
+                "current_version": current_version,
+                "latest_version": latest_version,
+                "channel": str(result.get("channel", channel)).strip() or channel,
+                "download_url": str(result.get("download_url", "")).strip(),
+                "notes_url": str(result.get("notes_url", "")).strip(),
+                "reason": _update_reason(current_version, latest_version),
+                "cached": False,
+            }
+            _write_cached_update_result(current_version, channel, updates, resolved)
+            return resolved
         except (OSError, URLError, json.JSONDecodeError) as exc:
             return {
                 "available": False,
                 "current_version": current_version,
                 "latest_version": current_version,
-                "channel": str(updates.get("channel", "")),
+                "channel": channel,
+                "reason": f"Unable to read remote update manifest: {exc}",
+                "cached": False,
+            }
+
+    if provider == "github-release":
+        try:
+            result = _resolve_github_release_result(updates, current_version)
+            result["cached"] = False
+            _write_cached_update_result(current_version, channel, updates, result)
+            return result
+        except (OSError, URLError, json.JSONDecodeError) as exc:
+            return {
+                "available": False,
+                "current_version": current_version,
+                "latest_version": current_version,
+                "channel": channel,
                 "reason": f"Unable to read latest GitHub release: {exc}",
+                "cached": False,
             }
 
     if not manifest_url:
@@ -285,31 +408,17 @@ def check_for_updates() -> dict[str, Any]:
             "available": False,
             "current_version": current_version,
             "latest_version": current_version,
-            "channel": str(updates.get("channel", "")),
+            "channel": channel,
             "reason": "No remote update manifest URL is configured yet.",
+            "cached": False,
         }
-
-    try:
-        remote = _read_remote_manifest(manifest_url)
-    except (OSError, URLError, json.JSONDecodeError) as exc:
-        return {
-            "available": False,
-            "current_version": current_version,
-            "latest_version": current_version,
-            "channel": str(updates.get("channel", "")),
-            "reason": f"Unable to read remote update manifest: {exc}",
-        }
-
-    latest_version = str(remote.get("version", "")).strip() or current_version
-    available = _normalize_version(latest_version) > _normalize_version(current_version)
     return {
-        "available": available,
+        "available": False,
         "current_version": current_version,
-        "latest_version": latest_version,
-        "channel": str(remote.get("channel", updates.get("channel", ""))),
-        "download_url": str(remote.get("download_url", "")).strip(),
-        "notes_url": str(remote.get("notes_url", "")).strip(),
-        "reason": "Update available." if available else "TCollection is already up to date.",
+        "latest_version": current_version,
+        "channel": channel,
+        "reason": "No update provider is configured yet.",
+        "cached": False,
     }
 
 
