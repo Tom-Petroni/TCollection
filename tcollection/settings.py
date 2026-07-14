@@ -40,6 +40,12 @@ except Exception:  # pragma: no cover - widget fallback is used instead
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 _SETTINGS_DIALOG: "TCollectionSettingsDialog | None" = None
+_NODE_DESCRIPTIONS = {
+    "TNoise": "2D/3D procedural noise creation for lookdev and technical maps.",
+    "TBlur": "Art-directable blur tool for softening images while preserving usable detail.",
+    "TMask": "Procedural masking node for fast texture, edge and volume isolation.",
+    "TColorRamp": "Color ramp node for remapping values with clean gradient control.",
+}
 
 
 def _normalize_status(status: str) -> str:
@@ -143,6 +149,32 @@ def _safe_url(url: str) -> str:
     value = url.strip()
     if value.startswith("https://") or value.startswith("http://"):
         return value
+    return ""
+
+
+def _svg_data_url(svg: str) -> str:
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def _generated_node_icon_data(node_key: str) -> str:
+    normalized = node_key.strip()
+    if normalized == "TColorRamp":
+        return _svg_data_url(
+            """
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="ramp" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="33%" stop-color="#8b5cf6"/>
+      <stop offset="66%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="22" width="52" height="20" rx="10" fill="url(#ramp)"/>
+</svg>
+""".strip()
+        )
     return ""
 
 
@@ -335,6 +367,8 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             source = entry.get("source", {})
             if not isinstance(source, dict):
                 source = {}
+            icon_data_url = _path_to_data_url(resolve_node_icon_path(node_key)) or _generated_node_icon_data(node_key)
+            description = _NODE_DESCRIPTIONS.get(node_key, str(entry.get("notes", "")).strip() or "Node runtime")
 
             node_assets.append(
                 {
@@ -347,10 +381,10 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                     "status_accent": status_meta["accent"],
                     "status_surface": status_meta["surface"],
                     "status_border": status_meta["border"],
-                    "subtitle": str(entry.get("class_name", "")).strip() or "Node runtime",
+                    "subtitle": description,
                     "notes": str(entry.get("notes", "")).strip() or "No extra notes yet.",
                     "initials": _asset_initials(label),
-                    "icon_data_url": _path_to_data_url(resolve_node_icon_path(node_key)),
+                    "icon_data_url": icon_data_url,
                     "relative_path": str(entry.get("python_path", "")).strip(),
                     "repo_url": _safe_url(str(source.get("repo_url", "")).strip()),
                     "releases_url": _safe_url(str(source.get("releases_url", "")).strip()),
@@ -425,9 +459,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         if self._update_result is None:
             latest_version = current_version
             update_available = False
-            update_summary = (
-                "No remote release has been checked yet. Compare this install against the latest GitHub release whenever you want."
-            )
+            update_summary = ""
             notes_url = _safe_url(str(links.get("releases_url", "")).strip())
             channel = "stable"
         else:
@@ -470,7 +502,7 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
                 "releases_url": _safe_url(str(links.get("releases_url", "")).strip()),
             },
             "header": {
-                "kicker": "Collection manager",
+                "kicker": "",
                 "subtitle": "Developed by Thomas Petroni",
                 "description": "",
                 "hero_pill": "Portfolio-inspired collection settings",
@@ -979,15 +1011,15 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
     }
 
     .asset-icon img {
-      width: 24px;
-      height: 24px;
+      width: 34px;
+      height: 34px;
       object-fit: contain;
       display: block;
     }
 
     .asset-initials {
       font-family: "Manrope", "DM Sans", "Segoe UI", sans-serif;
-      font-size: 18px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--primary);
     }
@@ -1235,7 +1267,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       return `
         <section class="panel section-group reveal" style="animation-delay:${100 + sectionIndex * 35}ms;">
           <div class="panel-header">
-            <span class="section-kicker">${escapeHtml(section.title)}</span>
             <h2 class="panel-title">${escapeHtml(section.title)}</h2>
             <p class="panel-body">${escapeHtml(section.description)}</p>
           </div>
@@ -1277,11 +1308,11 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
       const bannerHtml = banner.message
         ? `<div class="banner ${escapeHtml(banner.tone || "info")}">${escapeHtml(banner.message)}</div>`
         : "";
+      const updatesSummary = updates.summary ? `<p class="panel-body">${escapeHtml(updates.summary)}</p>` : "";
 
       document.getElementById("app").innerHTML = `
         <div class="page-shell">
           <header class="hero reveal" style="animation-delay:50ms;">
-            <span class="hero-kicker">${escapeHtml(header.kicker || "Collection manager")}</span>
             <h1 class="hero-title">${escapeHtml((state.collection && state.collection.display_name) || "TCollection")}</h1>
             <p class="hero-subtitle">${escapeHtml(header.subtitle || "")}</p>
             ${header.description ? `<p class="hero-description">${escapeHtml(header.description)}</p>` : ""}
@@ -1291,14 +1322,9 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
             <section class="panel reveal" style="animation-delay:90ms;">
               <div class="panel-header">
                 <h2 class="panel-title">Updates</h2>
-                <p class="panel-body">${escapeHtml(updates.summary || "")}</p>
+                ${updatesSummary}
               </div>
               ${bannerHtml}
-              <div class="updates-pills">
-                <span class="info-pill">Latest ${escapeHtml(updates.latest_version || "")}</span>
-                <span class="info-pill">Installed ${escapeHtml(updates.managed_version || "")}</span>
-                <span class="info-pill">Pending ${escapeHtml(updates.pending_version || "None")}</span>
-              </div>
               <div class="updates-actions">
                 <button class="action-button primary" data-action="${primaryAction}" ${primaryBusy ? "disabled" : ""}>
                   ${escapeHtml(primaryLabel)}
@@ -1340,7 +1366,6 @@ class TCollectionSettingsDialog(QtWidgets.QDialog):
         <div class="modal-card">
           <div class="modal-top">
             <div>
-              <span class="section-kicker">${escapeHtml(asset.kind)}</span>
               <h2 class="modal-title">${escapeHtml(asset.title)}</h2>
               <p class="modal-subtitle">${escapeHtml(asset.subtitle)}</p>
             </div>

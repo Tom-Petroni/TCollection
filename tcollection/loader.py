@@ -84,6 +84,18 @@ def resolve_node_icon_path(node_key: str) -> str:
     for candidate in _icon_candidates(entry):
         if candidate.is_file():
             return _normalized(str(candidate))
+
+    python_path = _resolve_python_path(entry)
+    fallback_dirs = [
+        python_path / str(entry.get("key", "")).strip() / "resources",
+        python_path / "resources",
+    ]
+    for directory in fallback_dirs:
+        if not directory.is_dir():
+            continue
+        png_files = sorted(directory.glob("*.png"))
+        if png_files:
+            return _normalized(str(png_files[0]))
     return ""
 
 
