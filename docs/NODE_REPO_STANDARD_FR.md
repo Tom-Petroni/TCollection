@@ -26,12 +26,21 @@ Le repo public doit avoir le meme nom que le node:
 
 ## Base recommandee
 
-Utiliser `NukeNodeTemplate` comme point de depart pour chaque nouveau repo node.
+Utiliser le generateur inclus dans `TCollection` comme point de depart pour
+chaque nouveau repo node:
+
+```powershell
+python .devtools/scaffold_node_repo.py TMonNode
+```
+
+Le detail du workflow local est documente dans:
+
+- `.devtools/NODE_TEMPLATE_WORKFLOW_FR.md`
 
 ## Checklist de creation d'un nouveau repo node
 
 1. creer le repo GitHub avec le nom du node
-2. generer le repo depuis `NukeNodeTemplate`
+2. generer le repo avec `python .devtools/scaffold_node_repo.py <NodeKey>`
 3. verifier la presence de `node.json`, `VERSION` et `.github/workflows/`
 4. verifier que la CI publie bien les builds Windows et Linux si le node est natif
 5. publier une premiere release `vX.Y.Z`
@@ -54,6 +63,9 @@ Pour les nodes natifs, le template gere aussi:
 - build matrix Windows/Linux sur les versions Nuke supportees
 - validation du package Python avant publication
 - option de synchronisation de `publish/<NodeKey>/bin`
+- separation claire entre:
+  - `work/` pour la boucle locale rapide
+  - `publish/` pour le package de release
 
 ## Verification depuis TCollection
 

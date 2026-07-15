@@ -69,10 +69,7 @@ TCollection/
   tcollection_bootstrap.py
   VERSION
   config/
-  docs/
-  gizmos/
   nodes/
-  scripts/
   tcollection/
 ```
 
@@ -120,9 +117,10 @@ You can also test:
 
 ```text
 TCollection/
+  .devtools/            # dev-only scaffolding and workflow helpers, not shipped
   .github/workflows/    # collection validation and future packaging workflows
   config/               # collection settings + node repo mapping + lockfile
-  docs/                 # architecture and updater strategy
+  docs/                 # source documentation, not shipped in the artist zip
   gizmos/               # collection-level gizmos
   nodes/                # registry only in source repo, payloads in packaged builds
   scripts/              # collection-level Python tools for artists
@@ -171,6 +169,13 @@ This writes:
 - `TCollection-vX.Y.Z.zip`
 - `latest.json`
 - `SHA256SUMS.txt`
+
+The packaged artist zip only contains runtime files. Source-only
+documentation and dev helpers stay out of the release payload, and placeholder
+folders are skipped until they contain real artist-facing assets.
+
+For dev-only helpers such as node scaffolding and worktree setup, see
+[.devtools/README.md](.devtools/README.md).
 
 ## Artist flow target
 

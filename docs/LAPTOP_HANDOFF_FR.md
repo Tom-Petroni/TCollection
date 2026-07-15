@@ -41,8 +41,8 @@ Dev/
 Commandes exemple:
 
 ```powershell
-mkdir C:\Dev\tsuite
-cd C:\Dev\tsuite
+mkdir C:\Dev\tcollection
+cd C:\Dev\tcollection
 git clone https://github.com/Tom-Petroni/TCollection.git
 git clone https://github.com/Tom-Petroni/TBlur.git
 git clone https://github.com/Tom-Petroni/TColorRamp.git
@@ -57,7 +57,7 @@ Ce layout correspond a `config/dev_sources.json` dans `TCollection`.
 Depuis un clone frais de `TCollection`:
 
 ```powershell
-cd C:\Dev\tsuite\TCollection
+cd C:\Dev\tcollection\TCollection
 python tools\validate_collection.py
 python tools\assemble_collection.py --source github-release --statuses stable --package-version 0.1.20 --output dist_portable
 ```
@@ -89,7 +89,7 @@ Exemple si tu modifies `TColorRamp`:
 Commandes:
 
 ```powershell
-cd C:\Dev\tsuite\TCollection
+cd C:\Dev\tcollection\TCollection
 python tools\promote_node.py TColorRamp
 python tools\validate_collection.py
 python tools\assemble_collection.py --source github-release --statuses stable
@@ -108,7 +108,7 @@ Fichiers automatiquement mis a jour:
 Quand les versions de nodes voulues sont epinglees:
 
 ```powershell
-cd C:\Dev\tsuite\TCollection
+cd C:\Dev\tcollection\TCollection
 python tools\bump_collection_version.py --bump patch
 python tools\sync_manifest.py
 python tools\validate_collection.py
@@ -177,7 +177,7 @@ La chaine valide la plus recente est:
 Si tu veux reprendre la suite sur le portable, le point de depart recommande est:
 
 ```powershell
-cd C:\Dev\tsuite\TCollection
+cd C:\Dev\tcollection\TCollection
 python tools\validate_collection.py
 ```
 

@@ -50,7 +50,7 @@
       "class_name": "TColorRamp",
       "bootstrap_module": "TColorRamp.init",
       "python_path": "nodes/TColorRamp/publish",
-      "notes": "Promoted to TSuite stable"
+      "notes": "Promoted to TCollection stable"
     },
     {
       "key": "TMask",

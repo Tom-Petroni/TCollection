@@ -16,22 +16,22 @@
       "repo_path": "..\\TNoise"
     },
     "TNormalRelight": {
-      "repo_path": "..\\TSuite-node-TNormalRelight"
+      "repo_path": "..\\TNormalRelight"
     },
     "TSMAA": {
-      "repo_path": "..\\TSuite-node-TSMAA"
+      "repo_path": "..\\TSMAA"
     },
     "TScatter": {
-      "repo_path": "..\\TSuite-node-TScatter"
+      "repo_path": "..\\TScatter"
     },
     "BrushScatter": {
-      "repo_path": "..\\TSuite-node-BrushScatter"
+      "repo_path": "..\\BrushScatter"
     },
     "PRefToMotion": {
-      "repo_path": "..\\TSuite-node-PRefToMotion"
+      "repo_path": "..\\PRefToMotion"
     },
     "OnlyRender": {
-      "repo_path": "..\\TSuite-node-OnlyRender"
+      "repo_path": "..\\OnlyRender"
     }
   }
 }

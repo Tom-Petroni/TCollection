@@ -29,15 +29,16 @@ PACKAGE_ROOT_FILES = [
     "menu.py",
     "tcollection_bootstrap.py",
     "VERSION",
+    "config/collection.json",
 ]
 
 PACKAGE_ROOT_DIRS = [
-    "config",
-    "docs",
     "gizmos",
     "scripts",
     "tcollection",
 ]
+
+PLACEHOLDER_RUNTIME_FILENAMES = {"README.md"}
 
 
 def _selected_statuses(raw_statuses: str) -> set[str]:
@@ -103,10 +104,21 @@ def _copy_runtime_root(stage_dir: Path) -> None:
 
     for relative in PACKAGE_ROOT_DIRS:
         src = ROOT_DIR / relative
+        if not src.is_dir():
+            continue
+        if _is_placeholder_runtime_dir(src):
+            continue
         dst = stage_dir / relative
         if dst.exists():
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
+
+
+def _is_placeholder_runtime_dir(path: Path) -> bool:
+    entries = [entry for entry in path.iterdir()]
+    if not entries:
+        return True
+    return all(entry.is_file() and entry.name in PLACEHOLDER_RUNTIME_FILENAMES for entry in entries)
 
 
 def _copy_node_publish(stage_dir: Path, node_key: str, repo_path: Path) -> None:
