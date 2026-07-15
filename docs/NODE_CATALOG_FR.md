@@ -7,9 +7,9 @@ et `config/node_lock.json`.
 
 | Node | Version | Status | Repo | Releases | Asset |
 | --- | --- | --- | --- | --- | --- |
-| TBlur | 1.0.6 | stable | [Tom-Petroni/TBlur](https://github.com/Tom-Petroni/TBlur) | [releases](https://github.com/Tom-Petroni/TBlur/releases) | `TBlur-v1.0.6.zip` |
-| TColorRamp | 1.0.2 | stable | [Tom-Petroni/TColorRamp](https://github.com/Tom-Petroni/TColorRamp) | [releases](https://github.com/Tom-Petroni/TColorRamp/releases) | `TColorRamp-v1.0.2.zip` |
-| TMask | 0.1.3 | stable | [Tom-Petroni/TMask](https://github.com/Tom-Petroni/TMask) | [releases](https://github.com/Tom-Petroni/TMask/releases) | `TMask-v0.1.3.zip` |
+| TBlur | 1.0.8 | stable | [Tom-Petroni/TBlur](https://github.com/Tom-Petroni/TBlur) | [releases](https://github.com/Tom-Petroni/TBlur/releases) | `TBlur-v1.0.8.zip` |
+| TColorRamp | 1.0.4 | stable | [Tom-Petroni/TColorRamp](https://github.com/Tom-Petroni/TColorRamp) | [releases](https://github.com/Tom-Petroni/TColorRamp/releases) | `TColorRamp-v1.0.4.zip` |
+| TMask | 0.1.5 | stable | [Tom-Petroni/TMask](https://github.com/Tom-Petroni/TMask) | [releases](https://github.com/Tom-Petroni/TMask/releases) | `TMask-v0.1.5.zip` |
 | TNoise | 2.1.5 | stable | [Tom-Petroni/TNoise](https://github.com/Tom-Petroni/TNoise) | [releases](https://github.com/Tom-Petroni/TNoise/releases) | `TNoise-v2.1.5.zip` |
 
 ## Nodes suivis mais pas encore embarques
