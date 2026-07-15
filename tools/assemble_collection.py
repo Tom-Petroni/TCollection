@@ -11,6 +11,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from _collection_utils import (
@@ -133,7 +134,59 @@ def _github_release_headers() -> dict[str, str]:
     return headers
 
 
+def _github_release_api_headers() -> dict[str, str]:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "TCollection-Assembler",
+    }
+    headers.update(_github_release_headers())
+    return headers
+
+
+def _github_asset_download_headers() -> dict[str, str]:
+    headers = {
+        "Accept": "application/octet-stream",
+        "User-Agent": "TCollection-Assembler",
+    }
+    headers.update(_github_release_headers())
+    return headers
+
+
+def _download_release_asset_via_api(repo: str, tag: str, asset_name: str, destination: Path) -> bool:
+    release_url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+    release_request = Request(release_url, headers=_github_release_api_headers())
+    try:
+        with urlopen(release_request, timeout=30) as response:
+            release_payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        if exc.code in {401, 403, 404}:
+            return False
+        raise
+
+    assets = release_payload.get("assets", []) if isinstance(release_payload, dict) else []
+    asset_api_url = ""
+    for asset in assets:
+        if isinstance(asset, dict) and str(asset.get("name", "")).strip() == asset_name:
+            asset_api_url = str(asset.get("url", "")).strip()
+            break
+
+    if not asset_api_url:
+        return False
+
+    asset_request = Request(asset_api_url, headers=_github_asset_download_headers())
+    try:
+        with urlopen(asset_request, timeout=30) as response:
+            destination.write_bytes(response.read())
+            return True
+    except HTTPError as exc:
+        if exc.code in {401, 403, 404}:
+            return False
+        raise
+
+
 def _download_release_asset(repo: str, tag: str, asset_name: str, destination: Path) -> None:
+    if _download_release_asset_via_api(repo, tag, asset_name, destination):
+        return
     url = f"https://github.com/{repo}/releases/download/{tag}/{asset_name}"
     request = Request(url, headers=_github_release_headers())
     with urlopen(request, timeout=30) as response:
