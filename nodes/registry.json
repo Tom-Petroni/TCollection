@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-07-15",
+  "updated_at": "2026-07-18",
   "nodes": [
     {
       "key": "BrushScatter",
@@ -45,12 +45,12 @@
     {
       "key": "TColorRamp",
       "label": "TColorRamp",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "status": "stable",
       "class_name": "TColorRamp",
       "bootstrap_module": "TColorRamp.init",
       "python_path": "nodes/TColorRamp/publish",
-      "notes": "Promoted to TCollection stable"
+      "notes": "Promoted to TSuite stable"
     },
     {
       "key": "TMask",

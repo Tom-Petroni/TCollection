@@ -362,6 +362,12 @@ def main() -> None:
                 node_key = str(entry.get("key", "")).strip()
                 if not node_key:
                     continue
+                archive_override = archive_overrides.get(node_key)
+                if archive_override is not None:
+                    _extract_release_publish(stage_dir, node_key, archive_override)
+                    if node_key in registry_by_key:
+                        included_node_entries.append(registry_by_key[node_key])
+                    continue
                 source = entry.get("source", {})
                 if not isinstance(source, dict):
                     continue

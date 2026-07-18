@@ -164,6 +164,13 @@ To assemble from published GitHub node releases instead of sibling local repos:
 python tools/assemble_collection.py --source github-release --statuses stable
 ```
 
+For QA, you can also mix published releases with one local archive override for a
+node that is not released yet:
+
+```powershell
+python tools/assemble_collection.py --source github-release --statuses stable --archive-override TColorRamp=..\TColorRamp\dist\TColorRamp-v1.0.5.zip
+```
+
 This writes:
 
 - `TCollection-vX.Y.Z.zip`
