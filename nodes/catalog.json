@@ -131,6 +131,19 @@
       "tag": "",
       "asset_name": "",
       "notes": "Still in validation."
+    },
+    {
+      "key": "TVectorBlur",
+      "label": "TVectorBlur",
+      "version": "2.0.5",
+      "status": "stable",
+      "enabled_in_collection": true,
+      "repo": "Tom-Petroni/TVectorBlur",
+      "repo_url": "https://github.com/Tom-Petroni/TVectorBlur",
+      "releases_url": "https://github.com/Tom-Petroni/TVectorBlur/releases",
+      "tag": "v2.0.5",
+      "asset_name": "TVectorBlur-v2.0.5.zip",
+      "notes": "CUDA-first vector blur node with optional warp and mask-driven behavior."
     }
   ]
 }

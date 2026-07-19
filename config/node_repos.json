@@ -27,6 +27,10 @@
       "enabled": true,
       "repo": "Tom-Petroni/TNoise"
     },
+    "TVectorBlur": {
+      "enabled": true,
+      "repo": "Tom-Petroni/TVectorBlur"
+    },
     "TNormalRelight": {
       "enabled": false,
       "repo": "Tom-Petroni/TNormalRelight"

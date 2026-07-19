@@ -45,6 +45,7 @@ _NODE_DESCRIPTIONS = {
     "TBlur": "Art-directable blur tool for softening images while preserving usable detail.",
     "TMask": "Procedural masking node for fast texture, edge and volume isolation.",
     "TColorRamp": "Color ramp node for remapping values with clean gradient control.",
+    "TVectorBlur": "CUDA vector blur node with mask and warp controls for motion/vector passes.",
 }
 
 

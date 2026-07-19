@@ -15,6 +15,9 @@
     "TNoise": {
       "repo_path": "..\\TNoise"
     },
+    "TVectorBlur": {
+      "repo_path": "..\\TVectorBlur"
+    },
     "TNormalRelight": {
       "repo_path": "..\\TNormalRelight"
     },

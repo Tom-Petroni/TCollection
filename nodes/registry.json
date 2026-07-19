@@ -101,6 +101,16 @@
       "bootstrap_module": "tscatter_plugin.init",
       "python_path": "nodes/TScatter/publish",
       "notes": "Still in validation."
+    },
+    {
+      "key": "TVectorBlur",
+      "label": "TVectorBlur",
+      "version": "2.0.5",
+      "status": "stable",
+      "class_name": "TVectorBlur",
+      "bootstrap_module": "TVectorBlur.init",
+      "python_path": "nodes/TVectorBlur/publish",
+      "notes": "CUDA-first vector blur node with optional warp and mask-driven behavior."
     }
   ]
 }

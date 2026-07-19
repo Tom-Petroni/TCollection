@@ -14,7 +14,7 @@ own repository, CI, and release cadence. TCollection is the product layer that:
 
 Use two levels of repositories:
 
-- node repositories such as `TNoise`, `TBlur`, `TMask`
+- node repositories such as `TNoise`, `TBlur`, `TMask`, `TVectorBlur`
 - one central collection repository: `TCollection`
 
 This keeps node development simple while giving artists a single package to
@@ -28,6 +28,7 @@ Current nodes shipped through the collection:
 - [TColorRamp](https://github.com/Tom-Petroni/TColorRamp)
 - [TMask](https://github.com/Tom-Petroni/TMask)
 - [TNoise](https://github.com/Tom-Petroni/TNoise)
+- [TVectorBlur](https://github.com/Tom-Petroni/TVectorBlur)
 
 The generated catalog lives in [docs/NODE_CATALOG_FR.md](docs/NODE_CATALOG_FR.md).
 The node repository naming convention lives in [docs/NODE_REPO_STANDARD_FR.md](docs/NODE_REPO_STANDARD_FR.md).
@@ -94,7 +95,7 @@ existing setup.
 If the install is correct, you should see:
 
 - a `Nodes > TCollection` menu
-- the nodes `TBlur`, `TColorRamp`, `TMask`, and `TNoise`
+- the nodes `TBlur`, `TColorRamp`, `TMask`, `TNoise`, and `TVectorBlur`
 
 ### 6. Check that the managed install is working
 

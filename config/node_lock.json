@@ -61,6 +61,21 @@
         "asset_name": "TNoise-v2.1.5.zip",
         "archive_root": "TNoise-2.1.5"
       }
+    },
+    {
+      "key": "TVectorBlur",
+      "version": "2.0.5",
+      "status": "stable",
+      "label": "TVectorBlur",
+      "source": {
+        "provider": "github-release",
+        "repo": "Tom-Petroni/TVectorBlur",
+        "repo_url": "https://github.com/Tom-Petroni/TVectorBlur",
+        "releases_url": "https://github.com/Tom-Petroni/TVectorBlur/releases",
+        "tag": "v2.0.5",
+        "asset_name": "TVectorBlur-v2.0.5.zip",
+        "archive_root": "TVectorBlur-2.0.5"
+      }
     }
   ]
 }

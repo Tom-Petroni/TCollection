@@ -11,6 +11,7 @@ et `config/node_lock.json`.
 | TColorRamp | 1.0.5 | stable | [Tom-Petroni/TColorRamp](https://github.com/Tom-Petroni/TColorRamp) | [releases](https://github.com/Tom-Petroni/TColorRamp/releases) | `TColorRamp-v1.0.5.zip` |
 | TMask | 0.1.5 | stable | [Tom-Petroni/TMask](https://github.com/Tom-Petroni/TMask) | [releases](https://github.com/Tom-Petroni/TMask/releases) | `TMask-v0.1.5.zip` |
 | TNoise | 2.1.5 | stable | [Tom-Petroni/TNoise](https://github.com/Tom-Petroni/TNoise) | [releases](https://github.com/Tom-Petroni/TNoise/releases) | `TNoise-v2.1.5.zip` |
+| TVectorBlur | 2.0.5 | stable | [Tom-Petroni/TVectorBlur](https://github.com/Tom-Petroni/TVectorBlur) | [releases](https://github.com/Tom-Petroni/TVectorBlur/releases) | `TVectorBlur-v2.0.5.zip` |
 
 ## Nodes suivis mais pas encore embarques
 
